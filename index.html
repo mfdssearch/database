@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+\<!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
@@ -65,7 +65,6 @@
     const { useState } = React;
 
     function App() {
-      // 1. 상태 관리 (State)
       const [prdtNm, setPrdtNm] = useState(''); 
       const [bsshNm, setBsshNm] = useState(''); 
       
@@ -83,13 +82,11 @@
 
       const API_KEY = '098da3673de823360ff33e80761e71e43429732d41fa932b68265be812843028'; 
 
-      // 식약처 API 응답(단일 객체 or 배열)을 항상 배열로 변환하는 안전 헬퍼 함수
       const normalizeItems = (items) => {
         if (!items) return [];
         return Array.isArray(items) ? items : [items];
       };
 
-      // 2. 통합 검색 실행 (목록 조회)
       const handleSearch = async (e) => {
         e.preventDefault();
         
@@ -104,15 +101,15 @@
         setHasSearched(true);
 
         try {
-          // [API 4-1] 시판 허가 기기 목록 쿼리 생성
+          // ★오류 수정: ENTP_NM 등 임의 파라미터를 제거하고 
+          // 식약처 공식 표준인 BSSH_NM으로 두 API 모두 통일했습니다.
           let deviceQuery = `serviceKey=${API_KEY}&pageNo=1&numOfRows=50&type=json`;
           if (prdtNm.trim()) deviceQuery += `&PRDT_NM=${encodeURIComponent(prdtNm.trim())}`;
-          if (bsshNm.trim()) deviceQuery += `&ENTP_NM=${encodeURIComponent(bsshNm.trim())}`; 
+          if (bsshNm.trim()) deviceQuery += `&BSSH_NM=${encodeURIComponent(bsshNm.trim())}`; 
 
-          // [API 2] 임상시험 진행 현황 쿼리 생성
           let trialQuery = `serviceKey=${API_KEY}&pageNo=1&numOfRows=50&type=json`;
           if (prdtNm.trim()) trialQuery += `&PRDT_NM=${encodeURIComponent(prdtNm.trim())}`;
-          if (bsshNm.trim()) trialQuery += `&MNFT_IPRT_BSSH_NM=${encodeURIComponent(bsshNm.trim())}`;
+          if (bsshNm.trim()) trialQuery += `&BSSH_NM=${encodeURIComponent(bsshNm.trim())}`;
 
           const deviceTargetUrl = `https://apis.data.go.kr/1471000/MdlpPrdlstPrmisnInfoService05/getMdlpPrdlstPrmisnList04?${deviceQuery}`;
           const trialTargetUrl = `https://apis.data.go.kr/1471000/MdeqClncTestPlanAprvAplyListService/getMdeqClncTestPlanAprvAplyListInq?${trialQuery}`;
@@ -120,7 +117,6 @@
           const deviceUrl = `https://corsproxy.io/?${encodeURIComponent(deviceTargetUrl)}`;
           const trialUrl = `https://corsproxy.io/?${encodeURIComponent(trialTargetUrl)}`;
 
-          // 두 API 동시 호출
           const [deviceRes, trialRes] = await Promise.all([
             fetch(deviceUrl).catch(() => ({ ok: false })), 
             fetch(trialUrl).catch(() => ({ ok: false }))
@@ -148,7 +144,6 @@
         }
       };
 
-      // 3. 상세 정보 조회 (모달 클릭)
       const handleRowClick = async (type, item) => {
         setModalType(type);
         setSelectedItem(item);
@@ -158,7 +153,6 @@
 
         try {
           if (type === 'device') {
-            // [API 3] & [API 4-2] 시판 기기 상세 동시 호출
             const infoTargetUrl = `https://apis.data.go.kr/1471000/MdeqPrdlstInfoService02/getMdeqPrdlstInfoInq02?serviceKey=${API_KEY}&pageNo=1&numOfRows=1&type=json&MEDDEV_ITEM_NO=${encodeURIComponent(item.MEDDEV_ITEM_NO)}`;
             const permTargetUrl = `https://apis.data.go.kr/1471000/MdlpPrdlstPrmisnInfoService05/getMdlpPrdlstPrmisnItem04?serviceKey=${API_KEY}&pageNo=1&numOfRows=1&type=json&MEDDEV_ITEM_NO=${encodeURIComponent(item.MEDDEV_ITEM_NO)}`;
             
@@ -188,7 +182,6 @@
             }
 
           } else {
-            // [API 1] 임상시험 상세 단일 호출
             const targetUrl = `https://apis.data.go.kr/1471000/MdeqClncTestPlanAprvAplyDtlService01/getMdeqClncTestPlanAprvAplyDtlInq01?serviceKey=${API_KEY}&pageNo=1&numOfRows=1&type=json&CLST_PLAN_APRV_NO=${encodeURIComponent(item.CLST_PLAN_APRV_NO)}`;
             const response = await fetch(`https://corsproxy.io/?${encodeURIComponent(targetUrl)}`);
             if (!response.ok) throw new Error('상세 데이터를 불러오는데 실패했습니다.');
@@ -215,7 +208,6 @@
         setDetails(null);
       };
 
-      // 4. 모달 데이터 출력 헬퍼 함수
       const getDetailVal = (key) => {
         if (!details) return '-';
         if (modalType === 'device') {
@@ -248,7 +240,7 @@
                   type="text" 
                   value={bsshNm} 
                   onChange={(e) => setBsshNm(e.target.value)} 
-                  placeholder="예: 와이브레인 (일부 단어 허용)" 
+                  placeholder="예: 리센스 (일부 단어 허용)" 
                 />
               </div>
               <button type="submit" disabled={isLoading}>
@@ -262,7 +254,6 @@
 
           {!isLoading && hasSearched && !error && (
             <div>
-              {/* 목록 1: 시판 허가 기기 */}
               <div className="section-title">
                 <span>🟢 1. 시판 허가된 기기 목록</span>
                 <span className="result-count">총 {deviceResults.length}건</span>
@@ -282,7 +273,7 @@
                     {deviceResults.map((item, index) => (
                       <tr key={`dev-${index}`} onClick={() => handleRowClick('device', item)}>
                         <td>{item.PRDT_NM}</td>
-                        <td>{item.ENTP_NM || item.BSSH_NM}</td>
+                        <td>{item.BSSH_NM || item.ENTP_NM}</td>
                         <td>{item.MEDDEV_ITEM_NO}</td>
                         <td>{item.GRADE}</td>
                         <td>{item.PRMISN_YMD}</td>
@@ -294,7 +285,6 @@
                 <div className="no-data">시판 허가된 기기 검색 결과가 없습니다.</div>
               )}
 
-              {/* 목록 2: 임상시험 승인 내역 */}
               <div className="section-title">
                 <span>🟠 2. 임상시험 진행/승인 현황</span>
                 <span className="result-count">총 {trialResults.length}건</span>
@@ -316,7 +306,7 @@
                         <td>{item.CLST_PLAN_APRV_NO}</td>
                         <td>{item.CLINIC_EXAM_CODE_NAME || item.CLST_DIVS_NM || '-'}</td>
                         <td>{item.PRDT_NM}</td>
-                        <td>{item.APLY_BSSH_NM || item.MNFT_IPRT_BSSH_NM}</td>
+                        <td>{item.APLY_BSSH_NM || item.MNFT_IPRT_BSSH_NM || item.BSSH_NM}</td>
                         <td>{item.APPROVAL_DATE}</td>
                       </tr>
                     ))}
@@ -328,7 +318,6 @@
             </div>
           )}
 
-          {/* 모달 팝업 영역 */}
           {selectedItem && (
             <div className="modal-overlay" onClick={closeModal}>
               <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -345,13 +334,12 @@
                 {isDetailLoading && <p className="loading">식약처 상세 데이터베이스 연동 중입니다...</p>}
                 {detailError && <p className="error">{detailError}</p>}
                 
-                {/* 팝업 1: 시판 허가 기기 상세 */}
                 {!isDetailLoading && details && modalType === 'device' && (
                   <table className="detail-table">
                     <tbody>
                       <tr><td colSpan="2" className="section-header">📌 기본 및 허가 정보</td></tr>
                       <tr><th>제품명 (품목명)</th><td>{getDetailVal('PRDT_NM')}</td></tr>
-                      <tr><th>업체명</th><td>{getDetailVal('ENTP_NM') !== '-' ? getDetailVal('ENTP_NM') : getDetailVal('BSSH_NM')}</td></tr>
+                      <tr><th>업체명</th><td>{getDetailVal('BSSH_NM') !== '-' ? getDetailVal('BSSH_NM') : getDetailVal('ENTP_NM')}</td></tr>
                       <tr><th>의료기기품목허가번호</th><td>{getDetailVal('MEDDEV_ITEM_NO')}</td></tr>
                       <tr><th>허가일자</th><td>{getDetailVal('PRMISN_YMD')}</td></tr>
                       <tr><th>취소/취하 여부</th><td>{getDetailVal('CANCEL_WDRAW_DIVS_CD_NM') || '정상 유지'}</td></tr>
@@ -370,7 +358,6 @@
                   </table>
                 )}
 
-                {/* 팝업 2: 임상시험 상세 */}
                 {!isDetailLoading && details && modalType === 'trial' && (
                   <table className="detail-table">
                     <tbody>
