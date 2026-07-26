@@ -61,29 +61,23 @@
     const { useState } = React;
 
     function App() {
-      const [searchType, setSearchType] = useState('PRDT_NM'); // 검색 조건 (제품명 or 업체명)
+      const [searchType, setSearchType] = useState('PRDT_NM'); 
       const [keyword, setKeyword] = useState('');
       
-      // 검색 결과 상태
-      const [deviceResults, setDeviceResults] = useState([]); // 허가 기기 목록 (API 4)
-      const [trialResults, setTrialResults] = useState([]);   // 임상 시험 목록 (API 2)
+      const [deviceResults, setDeviceResults] = useState([]);
+      const [trialResults, setTrialResults] = useState([]);
       const [isLoading, setIsLoading] = useState(false);
       const [error, setError] = useState(null);
       const [hasSearched, setHasSearched] = useState(false);
 
-      // 모달 상태
-      const [modalType, setModalType] = useState(null); // 'device' or 'trial'
+      const [modalType, setModalType] = useState(null); 
       const [selectedItem, setSelectedItem] = useState(null);
       const [details, setDetails] = useState(null);
       const [isDetailLoading, setIsDetailLoading] = useState(false);
       const [detailError, setDetailError] = useState(null);
 
-      // 공통 API 키
       const API_KEY = '098da3673de823360ff33e80761e71e43429732d41fa932b68265be812843028'; 
 
-      // ==========================================
-      // 통합 검색 실행 (API 4, API 2 동시 호출)
-      // ==========================================
       const handleSearch = async (e) => {
         e.preventDefault();
         if (!keyword.trim()) return alert('검색어를 입력해주세요.');
@@ -95,50 +89,43 @@
         setHasSearched(true);
 
         try {
-          // 1. 시판 허가기기 검색 URL (API 4)
-          // 업체명 검색일 경우 BSSH_NM, 제품명 검색일 경우 PRDT_NM
           const deviceParam = searchType === 'BSSH_NM' ? `BSSH_NM=${encodeURIComponent(keyword)}` : `PRDT_NM=${encodeURIComponent(keyword)}`;
           const deviceTargetUrl = `https://apis.data.go.kr/1471000/MdlpPrdlstPrmisnInfoService05/getMdlpPrdlstPrmisnList04?serviceKey=${API_KEY}&pageNo=1&numOfRows=30&type=json&${deviceParam}`;
-          const deviceUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(deviceTargetUrl)}`;
-
-          // 2. 임상시험 검색 URL (API 2)
-          // 임상시험 API에서는 업체명 파라미터가 MNFT_IPRT_BSSH_NM(제조수입업소명) 임
+          
           const trialParam = searchType === 'BSSH_NM' ? `MNFT_IPRT_BSSH_NM=${encodeURIComponent(keyword)}` : `PRDT_NM=${encodeURIComponent(keyword)}`;
           const trialTargetUrl = `https://apis.data.go.kr/1471000/MdeqClncTestPlanAprvAplyListService/getMdeqClncTestPlanAprvAplyListInq?serviceKey=${API_KEY}&pageNo=1&numOfRows=30&type=json&${trialParam}`;
-          const trialUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(trialTargetUrl)}`;
+          
+          // 더 안정적인 corsproxy.io 로 프록시 교체
+          const deviceUrl = `https://corsproxy.io/?${encodeURIComponent(deviceTargetUrl)}`;
+          const trialUrl = `https://corsproxy.io/?${encodeURIComponent(trialTargetUrl)}`;
 
-          // 두 API를 동시에 호출하여 속도 최적화 (Promise.all)
           const [deviceRes, trialRes] = await Promise.all([
             fetch(deviceUrl).catch(e => ({ ok: false })), 
             fetch(trialUrl).catch(e => ({ ok: false }))
           ]);
 
-          // 허가 기기 데이터 파싱
           if (deviceRes.ok) {
             const deviceData = await deviceRes.json();
             if (deviceData?.body?.items) setDeviceResults(deviceData.body.items);
           }
 
-          // 임상 시험 데이터 파싱
           if (trialRes.ok) {
             const trialData = await trialRes.json();
             if (trialData?.body?.items) setTrialResults(trialData.body.items);
           }
 
-          if ((!deviceRes.ok && !trialRes.ok) || (!deviceResults.length && !trialResults.length && deviceRes.ok && trialRes.ok)) {
-            // 에러처리는 아래 렌더링 부분에서 results 길이로 체크함
+          if (!deviceRes.ok && !trialRes.ok) {
+            throw new Error('프록시 서버 응답 오류');
           }
 
         } catch (err) {
-          setError('서버 통신 중 오류가 발생했습니다. (CORS 문제 등)');
+          console.error(err);
+          setError('보안 문제(CORS) 또는 서버 오류로 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
         } finally {
           setIsLoading(false);
         }
       };
 
-      // ==========================================
-      // 상세 정보 조회 (모달 클릭 이벤트)
-      // ==========================================
       const handleRowClick = async (type, item) => {
         setModalType(type);
         setSelectedItem(item);
@@ -150,14 +137,12 @@
           let targetUrl = '';
           
           if (type === 'device') {
-            // 허가 기기 상세조회 (API 3)
             targetUrl = `https://apis.data.go.kr/1471000/MdeqPrdlstInfoService02/getMdeqPrdlstInfoInq02?serviceKey=${API_KEY}&pageNo=1&numOfRows=1&type=json&MEDDEV_ITEM_NO=${encodeURIComponent(item.MEDDEV_ITEM_NO)}`;
           } else {
-            // 임상 시험 상세조회 (API 1)
             targetUrl = `https://apis.data.go.kr/1471000/MdeqClncTestPlanAprvAplyDtlService01/getMdeqClncTestPlanAprvAplyDtlInq01?serviceKey=${API_KEY}&pageNo=1&numOfRows=1&type=json&CLST_PLAN_APRV_NO=${encodeURIComponent(item.CLST_PLAN_APRV_NO)}`;
           }
 
-          const url = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
+          const url = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
           const response = await fetch(url);
           if (!response.ok) throw new Error('상세 데이터를 불러오는데 실패했습니다.');
 
@@ -168,6 +153,7 @@
             setDetailError('상세 정보가 등록되어 있지 않습니다.');
           }
         } catch (err) {
+          console.error(err);
           setDetailError('상세 정보를 불러오지 못했습니다.');
         } finally {
           setIsDetailLoading(false);
@@ -186,7 +172,6 @@
             <h1>⚕️ MFDS 통합 의료기기 Database</h1>
           </div>
           
-          {/* 1. 통합 검색창 */}
           <form className="search-panel" onSubmit={handleSearch}>
             <select value={searchType} onChange={(e) => setSearchType(e.target.value)}>
               <option value="PRDT_NM">제품명(모델명)으로 검색</option>
@@ -196,7 +181,7 @@
               type="text" 
               value={keyword} 
               onChange={(e) => setKeyword(e.target.value)} 
-              placeholder="검색어를 입력하세요 (예: 삼성, 주사기 등)" 
+              placeholder="검색어를 입력하세요 (예: 와이브레인, 주사기 등)" 
             />
             <button type="submit" disabled={isLoading}>
               {isLoading ? '통합 검색 중...' : '통합 검색'}
@@ -206,10 +191,8 @@
           {error && <p className="error">{error}</p>}
           {isLoading && <p className="loading">식약처 데이터베이스 4곳을 동시 검색 중입니다...</p>}
 
-          {/* 검색을 한 상태이고 로딩이 끝났을 때 결과 표시 */}
           {!isLoading && hasSearched && !error && (
             <div>
-              {/* 2-1. 시판 허가 기기 결과 (API 4) */}
               <div className="section-title">
                 <span>🟢 1. 시판 허가된 기기 목록</span>
                 <span className="result-count">총 {deviceResults.length}건</span>
@@ -241,7 +224,6 @@
                 <div className="no-data">시판 허가된 기기 내역이 없습니다.</div>
               )}
 
-              {/* 2-2. 임상시험 승인 결과 (API 2) */}
               <div className="section-title">
                 <span>🟠 2. 임상시험 진행/승인 현황</span>
                 <span className="result-count">총 {trialResults.length}건</span>
@@ -275,7 +257,6 @@
             </div>
           )}
 
-          {/* 3. 공통 모달 (상세 정보) */}
           {selectedItem && (
             <div className="modal-overlay" onClick={closeModal}>
               <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -292,7 +273,6 @@
                 {isDetailLoading && <p className="loading">상세 데이터 연동 중입니다...</p>}
                 {detailError && <p className="error">{detailError}</p>}
                 
-                {/* 시판 기기 상세 (API 3 포맷) */}
                 {!isDetailLoading && details && modalType === 'device' && (
                   <table className="detail-table">
                     <tbody>
@@ -307,7 +287,6 @@
                   </table>
                 )}
 
-                {/* 임상 시험 상세 (API 1 포맷) */}
                 {!isDetailLoading && details && modalType === 'trial' && (
                   <table className="detail-table">
                     <tbody>
