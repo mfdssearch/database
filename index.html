@@ -16,7 +16,6 @@
     .header-area { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2c3e50; padding-bottom: 15px; margin-bottom: 25px; }
     .header-area h1 { margin: 0; color: #2c3e50; font-size: 24px; font-weight: 800; }
     
-    /* 💡 새롭게 바뀐 다중 입력 검색창 스타일 */
     .search-panel { background: #ecf0f1; border-radius: 8px; padding: 25px; margin-bottom: 30px; }
     .search-panel h3 { margin-top: 0; margin-bottom: 15px; font-size: 16px; color: #34495e; }
     .search-grid { display: flex; gap: 15px; align-items: flex-end; }
@@ -29,7 +28,6 @@
     .search-grid button:hover { background-color: #1c5980; }
     .search-grid button:disabled { background-color: #95a5a6; cursor: not-allowed; }
 
-    /* 결과 섹션 분리 스타일 */
     .section-title { font-size: 18px; color: #2980b9; border-bottom: 2px solid #3498db; padding-bottom: 8px; margin-top: 30px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: flex-end; }
     .result-count { font-size: 14px; color: #7f8c8d; font-weight: normal; }
     
@@ -42,7 +40,6 @@
     .loading { text-align: center; color: #2980b9; font-weight: bold; margin: 40px 0; font-size: 16px; }
     .no-data { text-align: center; padding: 30px; color: #7f8c8d; background: #f9f9f9; border: 1px dashed #ccc; border-radius: 4px; }
 
-    /* 모달 스타일 */
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; }
     .modal-content { background: white; padding: 25px; border-radius: 8px; width: 90%; max-width: 800px; max-height: 85vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
     .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2980b9; padding-bottom: 15px; margin-bottom: 20px; }
@@ -66,9 +63,8 @@
     const { useState } = React;
 
     function App() {
-      // 💡 드롭다운 대신 입력 필드 상태를 각각 분리했습니다.
-      const [prdtNm, setPrdtNm] = useState(''); // 제품명
-      const [bsshNm, setBsshNm] = useState(''); // 업체명
+      const [prdtNm, setPrdtNm] = useState(''); 
+      const [bsshNm, setBsshNm] = useState(''); 
       
       const [deviceResults, setDeviceResults] = useState([]);
       const [trialResults, setTrialResults] = useState([]);
@@ -87,7 +83,6 @@
       const handleSearch = async (e) => {
         e.preventDefault();
         
-        // 💡 두 칸 중 하나도 입력하지 않았을 때만 경고 알림창 띄우기
         if (!prdtNm.trim() && !bsshNm.trim()) {
           return alert('제품명이나 업체명 중 최소 하나를 입력해주세요.');
         }
@@ -99,14 +94,14 @@
         setHasSearched(true);
 
         try {
-          // 💡 입력된 값만 골라서 URL 쿼리에 추가 (조합 검색 및 단일 검색 가능)
+          // [수정핵심] API 4(시판허가목록)는 업체명 파라미터로 ENTP_NM을 사용해야 합니다.
           let deviceQuery = `serviceKey=${API_KEY}&pageNo=1&numOfRows=30&type=json`;
           if (prdtNm.trim()) deviceQuery += `&PRDT_NM=${encodeURIComponent(prdtNm.trim())}`;
-          if (bsshNm.trim()) deviceQuery += `&BSSH_NM=${encodeURIComponent(bsshNm.trim())}`;
+          if (bsshNm.trim()) deviceQuery += `&ENTP_NM=${encodeURIComponent(bsshNm.trim())}`; 
 
           let trialQuery = `serviceKey=${API_KEY}&pageNo=1&numOfRows=30&type=json`;
           if (prdtNm.trim()) trialQuery += `&PRDT_NM=${encodeURIComponent(prdtNm.trim())}`;
-          if (bsshNm.trim()) trialQuery += `&MNFT_IPRT_BSSH_NM=${encodeURIComponent(bsshNm.trim())}`; // 임상시험 API는 파라미터 이름이 다름
+          if (bsshNm.trim()) trialQuery += `&MNFT_IPRT_BSSH_NM=${encodeURIComponent(bsshNm.trim())}`;
 
           const deviceTargetUrl = `https://apis.data.go.kr/1471000/MdlpPrdlstPrmisnInfoService05/getMdlpPrdlstPrmisnList04?${deviceQuery}`;
           const trialTargetUrl = `https://apis.data.go.kr/1471000/MdeqClncTestPlanAprvAplyListService/getMdeqClncTestPlanAprvAplyListInq?${trialQuery}`;
@@ -187,7 +182,6 @@
             <h1>⚕️ MFDS 통합 의료기기 Database</h1>
           </div>
           
-          {/* 💡 새로운 통합 검색창 레이아웃 */}
           <form className="search-panel" onSubmit={handleSearch}>
             <h3>🔍 조건 검색 (둘 중 하나만 입력하거나 일부 단어만 입력해도 검색됩니다)</h3>
             <div className="search-grid">
@@ -239,7 +233,8 @@
                     {deviceResults.map((item, index) => (
                       <tr key={`dev-${index}`} onClick={() => handleRowClick('device', item)}>
                         <td>{item.PRDT_NM}</td>
-                        <td>{item.BSSH_NM}</td>
+                        {/* API가 ENTP_NM이나 BSSH_NM 중 어느것을 반환해도 보여주도록 처리 */}
+                        <td>{item.ENTP_NM || item.BSSH_NM}</td>
                         <td>{item.MEDDEV_ITEM_NO}</td>
                         <td>{item.GRADE}</td>
                         <td>{item.PRMISN_YMD}</td>
@@ -272,7 +267,7 @@
                         <td>{item.CLST_PLAN_APRV_NO}</td>
                         <td>{item.CLINIC_EXAM_CODE_NAME || item.CLST_DIVS_NM || '-'}</td>
                         <td>{item.PRDT_NM}</td>
-                        <td>{item.APLY_BSSH_NM}</td>
+                        <td>{item.APLY_BSSH_NM || item.MNFT_IPRT_BSSH_NM}</td>
                         <td>{item.APPROVAL_DATE}</td>
                       </tr>
                     ))}
@@ -304,7 +299,7 @@
                   <table className="detail-table">
                     <tbody>
                       <tr><th>제품명</th><td>{details.PRDT_NM || selectedItem.PRDT_NM}</td></tr>
-                      <tr><th>제조업체</th><td>{details.BSSH_NM || selectedItem.BSSH_NM}</td></tr>
+                      <tr><th>제조업체</th><td>{details.ENTP_NM || details.BSSH_NM || selectedItem.ENTP_NM || selectedItem.BSSH_NM}</td></tr>
                       <tr><th>허가번호</th><td>{details.MEDDEV_ITEM_NO || selectedItem.MEDDEV_ITEM_NO}</td></tr>
                       <tr><th>사용 목적</th><td>{details.USE_PURPS || '등록 내용 없음'}</td></tr>
                       <tr><th>사용 방법</th><td>{details.USE_MTHD || '등록 내용 없음'}</td></tr>
@@ -320,7 +315,7 @@
                       <tr><th>임상시험 제목</th><td><strong>{details.CLNC_TEST_TITLE || '제목 없음'}</strong></td></tr>
                       <tr><th>임상 승인번호</th><td>{details.CLST_PLAN_APRV_NO || selectedItem.CLST_PLAN_APRV_NO}</td></tr>
                       <tr><th>대상 제품명</th><td>{details.PRDT_NM || selectedItem.PRDT_NM}</td></tr>
-                      <tr><th>신청 업체명</th><td>{details.APLY_BSSH_NM || selectedItem.APLY_BSSH_NM}</td></tr>
+                      <tr><th>신청 업체명</th><td>{details.APLY_BSSH_NM || selectedItem.APLY_BSSH_NM || selectedItem.MNFT_IPRT_BSSH_NM}</td></tr>
                       <tr><th>임상시험 상세명</th><td>{details.CLNC_TEST_DTL_NM || '-'}</td></tr>
                       <tr><th>의료기기 분류번호</th><td>{details.MDEQ_CLSF_NO || '-'}</td></tr>
                     </tbody>
