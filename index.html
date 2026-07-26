@@ -3,138 +3,322 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>API 단일 테스트: 품목정보 상세설명</title>
+  <title>의료기기 통합 DB (API 출처 분리형)</title>
+  
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
   <style>
-    body { font-family: 'Malgun Gothic', sans-serif; background-color: #f8f9fa; padding: 20px; color: #333; }
-    .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-    h1 { font-size: 20px; color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
-    .search-box { display: flex; gap: 10px; margin: 20px 0; }
-    input { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 15px; }
-    button { padding: 12px 25px; background: #3498db; color: white; border: none; border-radius: 4px; font-size: 15px; cursor: pointer; font-weight: bold; }
-    button:hover { background: #2980b9; }
-    .status { margin: 15px 0; font-weight: bold; color: #e74c3c; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
-    th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-    th { background-color: #f2f6f8; width: 35%; color: #2c3e50; }
-    td { white-space: pre-wrap; line-height: 1.5; }
+    body { font-family: 'Malgun Gothic', sans-serif; background-color: #f0f2f5; padding: 20px; color: #333; margin: 0; }
+    .container { max-width: 1200px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-top: 5px solid #2c3e50; }
+    
+    .header-area h1 { margin: 0 0 20px 0; color: #2c3e50; font-size: 24px; border-bottom: 2px solid #ecf0f1; padding-bottom: 15px; }
+    
+    .search-panel { background: #ecf0f1; border-radius: 8px; padding: 20px; margin-bottom: 30px; display: flex; gap: 15px; align-items: flex-end; }
+    .input-group { display: flex; flex-direction: column; flex: 1; }
+    .input-group label { font-size: 13px; font-weight: bold; margin-bottom: 8px; color: #34495e; }
+    .input-group input { padding: 12px; border: 1px solid #bdc3c7; border-radius: 4px; font-size: 15px; }
+    .btn-search { padding: 12px 30px; background-color: #2980b9; color: white; border: none; border-radius: 4px; font-size: 15px; font-weight: bold; cursor: pointer; height: 45px; }
+    .btn-search:hover { background-color: #1c5980; }
+    
+    table { width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 20px; }
+    th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+    th { background-color: #f8f9fa; color: #2c3e50; position: sticky; top: 0; }
+    tbody tr:hover { background-color: #eaf2f8; cursor: pointer; }
+    
+    .status-msg { margin: 20px 0; font-weight: bold; color: #2980b9; text-align: center; font-size: 16px; }
+    .error-msg { color: #e74c3c; text-align: center; font-weight: bold; padding: 15px; background: #fadbd8; border-radius: 4px; }
+
+    /* 팝업 모달 스타일 */
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+    .modal-content { background: white; padding: 25px; border-radius: 8px; width: 95%; max-width: 1100px; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2980b9; padding-bottom: 15px; margin-bottom: 20px; }
+    .modal-header h2 { margin: 0; color: #2980b9; font-size: 20px; }
+    .close-btn { background: #e74c3c; color: white; padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    
+    /* API 분리 표시를 위한 Grid 레이아웃 */
+    .api-split-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .api-card { border: 1px solid #dcdde1; border-radius: 6px; overflow: hidden; }
+    .api-card-header { padding: 15px; font-weight: bold; color: white; font-size: 15px; text-align: center; }
+    .api-card-header.api1 { background-color: #34495e; } /* API 1 색상 */
+    .api-card-header.api2 { background-color: #16a085; } /* API 2 색상 */
+    .api-card-body { padding: 15px; background: #fafafa; height: 100%; }
+    
+    .detail-table { width: 100%; border-collapse: collapse; font-size: 13px; background: white; }
+    .detail-table th { background: #f2f6f8; width: 35%; color: #34495e; border: 1px solid #ddd; padding: 10px; }
+    .detail-table td { border: 1px solid #ddd; padding: 10px; line-height: 1.5; white-space: pre-wrap; }
+    .empty-api { text-align: center; padding: 40px; color: #7f8c8d; font-style: italic; }
   </style>
 </head>
 <body>
+
   <div id="root"></div>
+
   <script type="text/babel">
     const { useState } = React;
 
-    function ApiTester() {
-      const [licenseNo, setLicenseNo] = useState('');
-      const [result, setResult] = useState(null);
-      const [status, setStatus] = useState('');
+    function App() {
+      const [company, setCompany] = useState('');
+      const [license, setLicense] = useState('');
+      
+      const [list, setList] = useState([]);
+      const [loading, setLoading] = useState(false);
+      const [error, setError] = useState('');
+      const [hasSearched, setHasSearched] = useState(false);
 
-      const API_KEY = '098da3673de823360ff33e80761e71e43429732d41fa932b68265be812843028';
+      const [selectedItem, setSelectedItem] = useState(null);
+      const [detailApi1, setDetailApi1] = useState(null);
+      const [detailApi2, setDetailApi2] = useState(null);
+      const [detailLoading, setDetailLoading] = useState(false);
 
+      const API_KEY = '098da3673de823360ff33e80761e71e43429732d41fa932b68265be812843028'; 
+
+      const normalizeItems = (items) => {
+        if (!items) return [];
+        return Array.isArray(items) ? items : [items];
+      };
+
+      const getCacheBustedUrl = (url) => `https://corsproxy.io/?${encodeURIComponent(`${url}&_t=${Date.now()}`)}`;
+
+      const parseJsonSafe = async (res) => {
+        if (!res.ok) return null;
+        try { return JSON.parse(await res.text()); } 
+        catch (e) { return null; }
+      };
+
+      // 1. 목록 검색 (API 1: MdlpPrdlstPrmisnInfoService05)
       const handleSearch = async (e) => {
         e.preventDefault();
-        if (!licenseNo.trim()) return alert('의료기기품목허가번호를 입력하세요.');
+        if (!company.trim() && !license.trim()) {
+          return alert('업체명 또는 허가번호를 입력해주세요.');
+        }
 
-        setStatus('식약처 서버에 데이터를 요청 중입니다...');
-        setResult(null);
+        setLoading(true); setError(''); setList([]); setHasSearched(true);
 
         try {
-          const encNo = encodeURIComponent(licenseNo.trim());
-          
-          // 파라미터 대소문자 문제 방지를 위해 prmisnNo와 PRMISN_NO를 둘 다 던짐
-          // 캐시 방지(_t) 적용 완료
-          const query = `serviceKey=${API_KEY}&pageNo=1&numOfRows=10&type=json&prmisnNo=${encNo}&PRMISN_NO=${encNo}&_t=${Date.now()}`;
-          const targetUrl = `https://apis.data.go.kr/1471000/MdeqPrdlstInfoService02/getMdeqPrdlstInfoInq02?${query}`;
-          const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
+          let query = `serviceKey=${API_KEY}&pageNo=1&numOfRows=100&type=json`;
+          // 식약처 서버가 확실히 인식하도록 소문자 카멜케이스 변수 사용
+          if (company) query += `&bsshNm=${encodeURIComponent(company.trim())}`;
+          if (license) query += `&meddevItemNo=${encodeURIComponent(license.trim())}`;
 
-          const response = await fetch(proxyUrl);
-          if (!response.ok) throw new Error('서버 통신 실패');
-          
-          const text = await response.text();
-          const data = JSON.parse(text);
+          const targetUrl = `https://apis.data.go.kr/1471000/MdlpPrdlstPrmisnInfoService05/getMdlpPrdlstPrmisnList04?${query}`;
+          const response = await fetch(getCacheBustedUrl(targetUrl));
+          const data = await parseJsonSafe(response);
 
-          const items = data?.body?.items;
-          const itemList = Array.isArray(items) ? items : (items ? [items] : []);
+          let rawItems = normalizeItems(data?.body?.items);
 
-          if (itemList.length > 0) {
-            setResult(itemList[0]); // 첫 번째 검색 결과 저장
-            setStatus(`검색 완료! (결과 ${itemList.length}건 중 첫번째 표시)`);
-          } else {
-            setStatus('⚠️ 해당 허가번호로 등록된 상세 정보가 없습니다.');
-          }
+          // 클라이언트 측 교차 검증 필터 (서버가 엉뚱한 데이터를 줄 경우 방어)
+          const kwCompany = company.trim().toLowerCase();
+          const kwLicense = license.trim().toLowerCase();
 
-        } catch (error) {
-          console.error(error);
-          setStatus('❌ 오류 발생: ' + error.message + ' (F12를 눌러 콘솔을 확인하세요)');
+          const filtered = rawItems.filter(item => {
+            const entpNm = (item.ENTP_NM || item.BSSH_NM || '').toLowerCase();
+            const itemNo = (item.MEDDEV_ITEM_NO || item.PRMISN_NO || '').toLowerCase();
+            
+            if (kwCompany && !entpNm.includes(kwCompany)) return false;
+            if (kwLicense && !itemNo.includes(kwLicense)) return false;
+            return true;
+          });
+
+          setList(filtered);
+          if (filtered.length === 0) setError('조건에 맞는 검색 결과가 없습니다.');
+
+        } catch (err) {
+          setError('검색 중 오류가 발생했습니다. (네트워크 지연 또는 서버 오류)');
+        } finally {
+          setLoading(false);
         }
       };
 
-      // 화면에 출력할 18개 항목 리스트 (Key - Title 형태)
-      const fieldList = [
-        { key: 'PRMISN_NO', title: '의료기기품목허가번호' },
-        { key: 'MEDDEV_ITEM_NO', title: '의료기기품목일련번호' },
-        { key: 'PRDT_NM', title: '품목명' },
-        { key: 'BRND_NM', title: '상품명' },
-        { key: 'INDUTY_CD_NM', title: '업종' },
-        { key: 'INSTT_RGN_DIVS', title: '기관지역구분' },
-        { key: 'PRMISN_RPT_DIVS', title: '허가신고구분' },
-        { key: 'PRMISN_YMD', title: '허가일자' },
-        { key: 'DIM_INFO', title: '치수' },
-        { key: 'CHRCT_NM', title: '특성명' },
-        { key: 'MNFT_MTHD', title: '제조방법' },
-        { key: 'USE_PURPS', title: '사용목적' },
-        { key: 'USE_MTHD', title: '사용방법' },
-        { key: 'USE_ATNT_MATR', title: '주의사항' },
-        { key: 'VLD_PRD', title: '유효기간' },
-        { key: 'TEST_STDR', title: '시험규격' },
-        { key: 'CANCEL_WDRAW_DIVS_CD', title: '취소취하구분코드' },
-        { key: 'CANCEL_WDRAW_YMD', title: '취소취하일자' }
+      // 2. 상세 조회 (클릭 시 2개의 API 동시 호출)
+      const handleRowClick = async (item) => {
+        setSelectedItem(item);
+        setDetailApi1(null);
+        setDetailApi2(null);
+        setDetailLoading(true);
+
+        try {
+          const encNo = encodeURIComponent(item.MEDDEV_ITEM_NO);
+
+          // [API 1] 허가 정보 상세설명 (MdlpPrdlstPrmisnInfoService05)
+          const url1 = getCacheBustedUrl(`https://apis.data.go.kr/1471000/MdlpPrdlstPrmisnInfoService05/getMdlpPrdlstPrmisnItem04?serviceKey=${API_KEY}&pageNo=1&numOfRows=10&type=json&meddevItemNo=${encNo}`);
+          
+          // [API 2] 품목 정보 상세설명 (MdeqPrdlstInfoService02) - prmisnNo 파라미터도 함께 던져 매칭 확률 극대화
+          const url2 = getCacheBustedUrl(`https://apis.data.go.kr/1471000/MdeqPrdlstInfoService02/getMdeqPrdlstInfoInq02?serviceKey=${API_KEY}&pageNo=1&numOfRows=10&type=json&meddevItemNo=${encNo}&prmisnNo=${encNo}`);
+
+          const [res1, res2] = await Promise.all([
+            fetch(url1).catch(() => ({ ok: false })),
+            fetch(url2).catch(() => ({ ok: false }))
+          ]);
+
+          const data1 = await parseJsonSafe(res1);
+          const data2 = await parseJsonSafe(res2);
+
+          const items1 = normalizeItems(data1?.body?.items);
+          const items2 = normalizeItems(data2?.body?.items);
+
+          if (items1.length > 0) setDetailApi1(items1[0]);
+          if (items2.length > 0) setDetailApi2(items2[0]);
+
+        } catch (err) {
+          alert('상세 정보를 불러오는 중 오류가 발생했습니다.');
+        } finally {
+          setDetailLoading(false);
+        }
+      };
+
+      const closeModal = () => setSelectedItem(null);
+
+      // 출력할 항목명 정의
+      const fieldsApi1 = [
+        { k: 'PRDT_NM', n: '품목명' },
+        { k: 'ENTP_NM', n: '업체명' },
+        { k: 'MEDDEV_ITEM_NO', n: '허가번호' },
+        { k: 'PRMISN_YMD', n: '허가일자' },
+        { k: 'GRADE', n: '등급' },
+        { k: 'USE_PURPS', n: '사용목적' },
+        { k: 'PRDT_TYP_CD_NM', n: '품목유형' },
+        { k: 'MNFT_MTHD', n: '제조방법' },
+        { k: 'CANCEL_WDRAW_DIVS_CD_NM', n: '상태(취소/취하)' }
+      ];
+
+      const fieldsApi2 = [
+        { k: 'BRND_NM', n: '상품명(모델명)' },
+        { k: 'DIM_INFO', n: '치수' },
+        { k: 'CHRCT_NM', n: '특성명' },
+        { k: 'USE_MTHD', n: '사용방법' },
+        { k: 'USE_ATNT_MATR', n: '주의사항' },
+        { k: 'VLD_PRD', n: '유효기간' },
+        { k: 'TEST_STDR', n: '시험규격' },
+        { k: 'INDUTY_CD_NM', n: '업종' },
+        { k: 'INSTT_RGN_DIVS', n: '관할지역' }
       ];
 
       return (
         <div className="container">
-          <h1>🛠️ 단일 API 테스트: 품목정보 상세설명 (MdeqPrdlstInfoService02)</h1>
-          <p>식약처 서버가 '품목허가번호'를 어떻게 인식하고 응답하는지 검증합니다.</p>
+          <div className="header-area">
+            <h1>⚕️ 의료기기 통합 검색 (API 출처 분리 비교)</h1>
+          </div>
           
-          <form className="search-box" onSubmit={handleSearch}>
-            <input 
-              type="text" 
-              value={licenseNo} 
-              onChange={(e) => setLicenseNo(e.target.value)} 
-              placeholder="예: 수허21-123, 제허11-1234호 등 정확한 번호 입력" 
-            />
-            <button type="submit">테스트 요청</button>
+          <form className="search-panel" onSubmit={handleSearch}>
+            <div className="input-group">
+              <label>업체명</label>
+              <input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="예: 삼성메디슨, 리센스메디컬" />
+            </div>
+            <div className="input-group">
+              <label>의료기기품목허가번호</label>
+              <input value={license} onChange={(e) => setLicense(e.target.value)} placeholder="예: 제허11-1234호" />
+            </div>
+            <button type="submit" className="btn-search" disabled={loading}>
+              {loading ? '검색 중...' : '통합 검색'}
+            </button>
           </form>
 
-          <div className="status">{status}</div>
+          {error && <div className="error-msg">{error}</div>}
 
-          {result && (
-            <table>
-              <thead>
-                <tr>
-                  <th>항목명 (API Key)</th>
-                  <th>실제 응답 데이터</th>
-                </tr>
-              </thead>
-              <tbody>
-                {fieldList.map(field => (
-                  <tr key={field.key}>
-                    <td><strong>{field.title}</strong><br/><span style={{fontSize: '11px', color: '#7f8c8d'}}>{field.key}</span></td>
-                    <td>{result[field.key] || '-'}</td>
+          {!loading && hasSearched && list.length > 0 && (
+            <div>
+              <h3>총 {list.length}건의 기기가 검색되었습니다. (상세를 보려면 클릭하세요)</h3>
+              <table>
+                <thead>
+                  <tr>
+                    <th>품목명</th>
+                    <th>업체명</th>
+                    <th>허가번호</th>
+                    <th>등급</th>
+                    <th>허가일자</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {list.map((item, idx) => (
+                    <tr key={idx} onClick={() => handleRowClick(item)}>
+                      <td>{item.PRDT_NM}</td>
+                      <td>{item.ENTP_NM || item.BSSH_NM}</td>
+                      <td>{item.MEDDEV_ITEM_NO}</td>
+                      <td>{item.GRADE}</td>
+                      <td>{item.PRMISN_YMD}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
+
+          {/* 상세 비교 팝업 모달 */}
+          {selectedItem && (
+            <div className="modal-overlay" onClick={closeModal}>
+              <div className="modal-content" onClick={e => e.stopPropagation()}>
+                <div className="modal-header">
+                  <h2>{selectedItem.PRDT_NM} 통합 상세 정보</h2>
+                  <button className="close-btn" onClick={closeModal}>닫기</button>
+                </div>
+                
+                {detailLoading ? (
+                  <div className="status-msg">식약처 2개 API에서 데이터를 동시에 융합하고 있습니다...</div>
+                ) : (
+                  <div className="api-split-container">
+                    
+                    {/* [API 1] 정보 영역 */}
+                    <div className="api-card">
+                      <div className="api-card-header api1">
+                        [API 1] MdlpPrdlstPrmisnInfoService05<br/>
+                        <span style={{fontSize:'12px', fontWeight:'normal'}}>(행정 및 허가 이력 데이터)</span>
+                      </div>
+                      <div className="api-card-body">
+                        {detailApi1 ? (
+                          <table className="detail-table">
+                            <tbody>
+                              {fieldsApi1.map(f => (
+                                <tr key={f.k}>
+                                  <th>{f.n}<br/><span style={{fontSize:'10px', color:'#7f8c8d'}}>{f.k}</span></th>
+                                  <td>{detailApi1[f.k] || '-'}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        ) : (
+                          <div className="empty-api">이 API에는 해당 기기 번호로 등록된 상세 데이터가 없습니다.</div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* [API 2] 정보 영역 */}
+                    <div className="api-card">
+                      <div className="api-card-header api2">
+                        [API 2] MdeqPrdlstInfoService02<br/>
+                        <span style={{fontSize:'12px', fontWeight:'normal'}}>(기기 물리적 스펙 및 안전 정보)</span>
+                      </div>
+                      <div className="api-card-body">
+                        {detailApi2 ? (
+                          <table className="detail-table">
+                            <tbody>
+                              {fieldsApi2.map(f => (
+                                <tr key={f.k}>
+                                  <th>{f.n}<br/><span style={{fontSize:'10px', color:'#7f8c8d'}}>{f.k}</span></th>
+                                  <td>{detailApi2[f.k] || '-'}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        ) : (
+                          <div className="empty-api">이 API에는 해당 기기 번호로 등록된 스펙/치수 데이터가 없습니다.</div>
+                        )}
+                      </div>
+                    </div>
+
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
         </div>
       );
     }
 
     const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<ApiTester />);
+    root.render(<App />);
   </script>
 </body>
 </html>
