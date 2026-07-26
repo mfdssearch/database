@@ -3,12 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>K-FDA 의료기기 허가 검색</title>
+  <!-- 요청하신 탭 이름 변경 -->
+  <title>MFDS_Database</title>
   
-  <!-- React 및 브라우저 변환기(Babel) 불러오기 -->
+  <!-- React 및 최신 브라우저 변환기(Babel 7) 불러오기 -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+  <!-- 구버전 Babel 6 대신 최신 Babel 7 적용 (하얀 화면 에러 해결) -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
   <style>
     body { font-family: 'Malgun Gothic', sans-serif; background-color: #f4f7f6; padding: 20px; }
@@ -27,10 +29,8 @@
 </head>
 <body>
 
-  <!-- 리액트 앱이 실행될 공간 -->
   <div id="root"></div>
 
-  <!-- 리액트 코드 작성 부분 -->
   <script type="text/babel">
     const { useState } = React;
 
@@ -40,7 +40,7 @@
       const [isLoading, setIsLoading] = useState(false);
       const [error, setError] = useState(null);
 
-      // 발급받은 일반 인증키를 아래에 꼭 넣어주세요!
+      // ★여기에 발급받으신 일반 인증키(Decoding)를 다시 넣어주세요!★
       const API_KEY = '발급받은_인증키_입력'; 
 
       const handleSearch = async (e) => {
@@ -52,25 +52,31 @@
         setResults([]);
 
         try {
-          // 공공데이터포털 의료기기 품목허가 API 주소
-          const url = `https://apis.data.go.kr/1471000/MdlpPrdlstPrmisnInfoService05/getMdlpPrdlstPrmisnList04?serviceKey=${API_KEY}&pageNo=1&numOfRows=20&type=json&PRDT_NM=${encodeURIComponent(keyword)}`;
+          // 공공데이터포털 원래 주소
+          const targetUrl = `https://apis.data.go.kr/1471000/MdlpPrdlstPrmisnInfoService05/getMdlpPrdlstPrmisnList04?serviceKey=${API_KEY}&pageNo=1&numOfRows=20&type=json&PRDT_NM=${encodeURIComponent(keyword)}`;
+          
+          // CORS 에러 우회를 위한 프록시 주소
+          const url = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
           
           const response = await fetch(url);
           if (!response.ok) throw new Error('데이터를 불러오는데 실패했습니다.');
 
           const data = await response.json();
           
-          // 결과가 있는 경우 배열로 저장
-          const items = data.body?.items || [];
+          // 하얀 화면을 유발했던 문법(옵셔널 체이닝)을 가장 안전한 방식으로 변경
+          let items = [];
+          if (data && data.body && data.body.items) {
+            items = data.body.items;
+          }
+          
           setResults(items);
 
           if(items.length === 0) {
             setError('검색 결과가 없습니다.');
           }
         } catch (err) {
-          // CORS 에러 발생 시 안내 메시지 출력
           if(err.message === 'Failed to fetch') {
-            setError('보안 문제(CORS)로 데이터를 불러오지 못했습니다. 크롬 확장프로그램(CORS Unblock)을 켜거나 프록시 서버를 설정해야 합니다.');
+            setError('보안 문제(CORS)로 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
           } else {
             setError(err.message);
           }
@@ -81,7 +87,8 @@
 
       return (
         <div className="container">
-          <h1>🏥 의료기기 허가정보 검색</h1>
+          {/* 웹사이트 안의 메인 제목도 맞춰서 변경했습니다 */}
+          <h1>🏥 MFDS_Database</h1>
           <form className="search-box" onSubmit={handleSearch}>
             <input 
               type="text" 
