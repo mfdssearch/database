@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>K-FDA 의료기기 허가 검색</title>
+  
+  <!-- React 및 브라우저 변환기(Babel) 불러오기 -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+
+  <style>
+    body { font-family: 'Malgun Gothic', sans-serif; background-color: #f4f7f6; padding: 20px; }
+    .container { max-width: 900px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+    h1 { color: #2c3e50; text-align: center; }
+    .search-box { display: flex; gap: 10px; margin-bottom: 20px; }
+    input { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; }
+    button { padding: 12px 20px; background-color: #3498db; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; }
+    button:hover { background-color: #2980b9; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+    th { background-color: #3498db; color: white; }
+    .error { color: red; text-align: center; }
+    .loading { text-align: center; color: #7f8c8d; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <!-- 리액트 앱이 실행될 공간 -->
+  <div id="root"></div>
+
+  <!-- 리액트 코드 작성 부분 -->
+  <script type="text/babel">
+    const { useState } = React;
+
+    function App() {
+      const [keyword, setKeyword] = useState('');
+      const [results, setResults] = useState([]);
+      const [isLoading, setIsLoading] = useState(false);
+      const [error, setError] = useState(null);
+
+      // 발급받은 일반 인증키를 아래에 꼭 넣어주세요!
+      const API_KEY = '발급받은_인증키_입력'; 
+
+      const handleSearch = async (e) => {
+        e.preventDefault();
+        if (!keyword) return alert('검색어를 입력해주세요.');
+
+        setIsLoading(true);
+        setError(null);
+        setResults([]);
+
+        try {
+          // 공공데이터포털 의료기기 품목허가 API 주소
+          const url = `https://apis.data.go.kr/1471000/MdlpPrdlstPrmisnInfoService05/getMdlpPrdlstPrmisnList04?serviceKey=${API_KEY}&pageNo=1&numOfRows=20&type=json&PRDT_NM=${encodeURIComponent(keyword)}`;
+          
+          const response = await fetch(url);
+          if (!response.ok) throw new Error('데이터를 불러오는데 실패했습니다.');
+
+          const data = await response.json();
+          
+          // 결과가 있는 경우 배열로 저장
+          const items = data.body?.items || [];
+          setResults(items);
+
+          if(items.length === 0) {
+            setError('검색 결과가 없습니다.');
+          }
+        } catch (err) {
+          // CORS 에러 발생 시 안내 메시지 출력
+          if(err.message === 'Failed to fetch') {
+            setError('보안 문제(CORS)로 데이터를 불러오지 못했습니다. 크롬 확장프로그램(CORS Unblock)을 켜거나 프록시 서버를 설정해야 합니다.');
+          } else {
+            setError(err.message);
+          }
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      return (
+        <div className="container">
+          <h1>🏥 의료기기 허가정보 검색</h1>
+          <form className="search-box" onSubmit={handleSearch}>
+            <input 
+              type="text" 
+              value={keyword} 
+              onChange={(e) => setKeyword(e.target.value)} 
+              placeholder="제품명을 입력하세요 (예: 밴드, 주사기)" 
+            />
+            <button type="submit" disabled={isLoading}>
+              {isLoading ? '검색 중...' : '검색하기'}
+            </button>
+          </form>
+
+          {error && <p className="error">{error}</p>}
+
+          {results.length > 0 && (
+            <table>
+              <thead>
+                <tr>
+                  <th>품목명(제품명)</th>
+                  <th>업체명</th>
+                  <th>허가번호</th>
+                  <th>등급</th>
+                </tr>
+              </thead>
+              <tbody>
+                {results.map((item, index) => (
+                  <tr key={index}>
+                    <td>{item.PRDT_NM}</td>
+                    <td>{item.BSSH_NM}</td>
+                    <td>{item.MEDDEV_ITEM_NO}</td>
+                    <td>{item.GRADE}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
