@@ -2,225 +2,175 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MFDS 품목허가 정보 단일 검색 (Rev 7.3)</title>
-  
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
+  <title>식약처 의료기기 품목허가 검색 (Rev 8.0)</title>
   <style>
-    body { font-family: 'Malgun Gothic', sans-serif; background-color: #f8f9fa; padding: 20px; color: #333; margin: 0; }
-    .container { max-width: 1000px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-top: 5px solid #2980b9; }
+    body { font-family: 'Malgun Gothic', sans-serif; background: #f4f6f9; padding: 20px; margin: 0; color: #333; }
+    .container { max-width: 1000px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+    h1 { color: #2c3e50; font-size: 22px; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
+    .search-box { display: flex; gap: 10px; margin: 20px 0; }
+    input { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 15px; }
+    button { padding: 12px 25px; background: #3498db; color: white; border: none; border-radius: 4px; font-size: 15px; cursor: pointer; font-weight: bold; }
+    button:hover { background: #2980b9; }
     
-    .header-area { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ecf0f1; padding-bottom: 15px; margin-bottom: 20px; }
-    .header-area h1 { margin: 0; color: #2c3e50; font-size: 22px; }
-    .version-badge { background-color: #8e44ad; color: white; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+    #status { font-weight: bold; color: #e67e22; margin: 15px 0; }
     
-    .search-panel { background: #ecf0f1; border-radius: 6px; padding: 20px; margin-bottom: 25px; display: flex; gap: 10px; }
-    .search-panel input { flex: 1; padding: 12px; border: 1px solid #bdc3c7; border-radius: 4px; font-size: 15px; }
-    .search-panel button { padding: 12px 30px; background-color: #2980b9; color: white; border: none; border-radius: 4px; font-size: 15px; font-weight: bold; cursor: pointer; }
-    .search-panel button:hover { background-color: #1c5980; }
-    
-    table { width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
     th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-    th { background-color: #f1f2f6; color: #2c3e50; }
-    tbody tr:hover { background-color: #eaf2f8; cursor: pointer; }
-    
-    .status { text-align: center; font-weight: bold; color: #2980b9; margin: 20px 0; }
-    .error { color: #c0392b; background: #fadbd8; padding: 12px; border-radius: 4px; text-align: center; font-weight: bold; line-height: 1.5; }
+    th { background-color: #ecf0f1; color: #2c3e50; }
+    tbody tr:hover { background-color: #f1f9fe; cursor: pointer; }
 
-    /* 상세 팝업 모달 */
-    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; }
-    .modal-content { background: white; padding: 25px; border-radius: 8px; width: 90%; max-width: 700px; max-height: 85vh; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
-    .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2980b9; padding-bottom: 12px; margin-bottom: 15px; }
-    .modal-header h2 { margin: 0; color: #2980b9; font-size: 18px; }
-    .close-btn { background: #e74c3c; color: white; padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
-    
-    .detail-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    .detail-table th { background: #f2f6f8; width: 30%; color: #34495e; padding: 10px; border: 1px solid #ddd; }
-    .detail-table td { padding: 10px; border: 1px solid #ddd; white-space: pre-wrap; line-height: 1.5; }
+    /* 상세 모달 */
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; }
+    .modal-content { background: white; padding: 30px; border-radius: 8px; width: 80%; max-width: 700px; max-height: 80vh; overflow-y: auto; }
+    .close-btn { background: #e74c3c; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; float: right; font-weight: bold; }
+    .detail-table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 13px; }
+    .detail-table th { width: 30%; background: #f8f9fa; }
   </style>
 </head>
 <body>
 
-  <div id="root"></div>
+  <div class="container">
+    <h1>🏥 식약처 의료기기 품목허가 통합 검색</h1>
+    <p>업체명을 입력하면 목록을 조회하고, 항목을 클릭하면 상세 정보를 확인할 수 있습니다.</p>
+    
+    <div class="search-box">
+      <input type="text" id="keyword" placeholder="예: 삼성 (또는 삼성메디슨)" value="삼성">
+      <button onclick="searchCompany()">검색하기</button>
+    </div>
 
-  <script type="text/babel">
-    const { useState } = React;
+    <div id="status"></div>
 
-    function SimpleApp() {
-      const [keyword, setKeyword] = useState('');
-      const [list, setList] = useState([]);
-      const [loading, setLoading] = useState(false);
-      const [error, setError] = useState('');
-      
-      const [selectedItem, setSelectedItem] = useState(null);
+    <div id="result-area"></div>
+  </div>
 
-      const API_KEY = '098da3673de823360ff33e80761e71e43429732d41fa932b68265be812843028'; 
+  <!-- 상세 정보 모달 -->
+  <div id="detailModal" class="modal">
+    <div class="modal-content">
+      <button class="close-btn" onclick="closeModal()">닫기</button>
+      <h2 id="modalTitle" style="margin-top:0; color:#2c3e50;">상세 정보</h2>
+      <div id="modalBody"></div>
+    </div>
+  </div>
 
-      // 데이터 구조를 강력하게 추출하는 만능 파서
-      const parseItems = (data) => {
-        try {
-          // 공공데이터 JSON의 다양한 구조(response.body.items.item 등) 탐색
-          const root = data?.response || data;
-          const body = root?.body || root;
-          const itemsContainer = body?.items;
-          
-          if (!itemsContainer) return [];
-          
-          const rawList = itemsContainer.item || itemsContainer;
-          if (!rawList) return [];
+  <script>
+    const API_KEY = '098da3673de823360ff33e80761e71e43429732d41fa932b68265be812843028';
+    let currentItems = []; // 검색된 전체 데이터 저장용
 
-          return Array.isArray(rawList) ? rawList : [rawList];
-        } catch (e) {
-          console.error("파싱 에러:", e);
-          return [];
+    async function searchCompany() {
+      const keyword = document.getElementById('keyword').value.trim();
+      const statusEl = document.getElementById('status');
+      const resultArea = document.getElementById('result-area');
+
+      if (!keyword) {
+        alert('검색어를 입력해주세요.');
+        return;
+      }
+
+      statusEl.innerText = '식약처 서버와 통신 중입니다...';
+      resultArea.innerHTML = '';
+
+      // 1. 목록조회 API 엔드포인트 구성 (entpNm 파라미터 사용)
+      const targetUrl = `https://apis.data.go.kr/1471000/MdlpPrdlstPrmisnInfoService05/getMdlpPrdlstPrmisnList04?serviceKey=${API_KEY}&pageNo=1&numOfRows=50&type=json&entpNm=${encodeURIComponent(keyword)}`;
+      const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
+
+      try {
+        const response = await fetch(proxyUrl);
+        if (!response.ok) throw new Error('네트워크 응답이 올바르지 않습니다. (HTTP ' + response.status + ')');
+
+        const textData = await response.text();
+        const json = JSON.parse(textData);
+        
+        console.log("식약처 API 원본 응답:", json);
+
+        // 2. 데이터 구조 안전 추출 (body.items.item 파싱)
+        const body = json?.response?.body || json?.body;
+        const itemsWrapper = body?.items;
+        
+        if (!itemsWrapper) {
+          statusEl.innerText = '⚠️ 검색 결과가 없거나 데이터 구조를 찾을 수 없습니다.';
+          return;
         }
-      };
 
-      // 키 값이 대소문자나 다르게 내려올 때를 대비한 안전 추출 헬퍼
-      const getVal = (item, keys) => {
-        if (!item) return '-';
-        for (let k of keys) {
-          // 대소문자 및 정확한 매칭 확인
-          for (let itemKey of Object.keys(item)) {
-            if (itemKey.toLowerCase() === k.toLowerCase()) {
-              if (item[itemKey] !== undefined && item[itemKey] !== null && item[itemKey] !== '') {
-                return item[itemKey];
-              }
-            }
-          }
+        const rawItem = itemsWrapper.item || itemsWrapper;
+        currentItems = Array.isArray(rawItem) ? rawItem : [rawItem];
+
+        if (currentItems.length === 0) {
+          statusEl.innerText = '⚠️ 조건에 맞는 허가 정보가 없습니다.';
+          return;
         }
-        return '-';
-      };
 
-      const handleSearch = async (e) => {
-        if (e) e.preventDefault();
-        if (!keyword.trim()) return alert('검색할 업체명을 입력해주세요.');
+        statusEl.innerText = `✨ 검색 성공! 총 ${currentItems.length}건의 데이터가 조회되었습니다. (아래 목록 중 하나를 클릭하세요)`;
+        renderTable(currentItems);
 
-        setLoading(true);
-        setError('');
-        setList([]);
-        setSelectedItem(null);
-
-        try {
-          const query = `serviceKey=${API_KEY}&pageNo=1&numOfRows=50&type=json&entpNm=${encodeURIComponent(keyword.trim())}&_t=${Date.now()}`;
-          const targetUrl = `https://apis.data.go.kr/1471000/MdlpPrdlstPrmisnInfoService05/getMdlpPrdlstPrmisnList04?${query}`;
-          const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
-
-          const response = await fetch(proxyUrl);
-          if (!response.ok) throw new Error('서버 통신 실패 (HTTP ' + response.status + ')');
-
-          const text = await response.text();
-          const data = JSON.parse(text);
-
-          console.log("식약처 API 응답 원본 데이터:", data);
-
-          const parsedList = parseItems(data);
-
-          setList(parsedList);
-          if (parsedList.length === 0) {
-            setError(`검색 결과가 없습니다. (F12 콘솔창의 응답 데이터를 확인해 보세요)`);
-          }
-
-        } catch (err) {
-          console.error(err);
-          setError('데이터를 불러오는 중 오류가 발생했습니다: ' + err.message);
-        } finally {
-          setLoading(false);
-        }
-      };
-
-      const displayFields = [
-        { label: '업체명', keys: ['ENTP_NM', 'BSSH_NM', 'entpNm'] },
-        { label: '품목명', keys: ['PRDT_NM', 'prdtNm'] },
-        { label: '의료기기품목허가번호', keys: ['MEDDEV_ITEM_NO', 'PRMISN_NO', 'meddevItemNo'] },
-        { label: '등급', keys: ['GRADE', 'grade'] },
-        { label: '허가일자', keys: ['PRMISN_YMD', 'prmisnYmd'] },
-        { label: '사용목적', keys: ['USE_PURPS', 'usePurps'] },
-        { label: '품목유형코드명', keys: ['PRDT_TYP_CD_NM', 'prdtTypCdNm'] },
-        { label: '제조방법', keys: ['MNFT_MTHD', 'mnftMthd'] },
-        { label: '취소취하구분명', keys: ['CANCEL_WDRAW_DIVS_CD_NM', 'cancelWdrawDivsCdNm'] },
-        { label: '취소취하일자', keys: ['CANCEL_WDRAW_YMD', 'cancelWdrawYmd'] }
-      ];
-
-      return (
-        <div className="container">
-          <div className="header-area">
-            <h1>⚕️ 품목허가 정보 단일 검색</h1>
-            <span className="version-badge">Rev 7.3</span>
-          </div>
-          
-          <form className="search-panel" onSubmit={handleSearch}>
-            <input 
-              type="text" 
-              value={keyword} 
-              onChange={(e) => setKeyword(e.target.value)} 
-              placeholder="예: 삼성메디슨 입력" 
-            />
-            <button type="submit">검색</button>
-          </form>
-
-          {loading && <div className="status">식약처 서버에서 데이터를 조회하고 있습니다...</div>}
-          {error && <div className="error">{error}</div>}
-
-          {!loading && list.length > 0 && (
-            <div>
-              <p style={{fontWeight: 'bold', color: '#2c3e50'}}>검색 결과: 총 {list.length}건 (항목을 클릭하면 상세 정보를 볼 수 있습니다)</p>
-              <table>
-                <thead>
-                  <tr>
-                    <th>품목명</th>
-                    <th>업체명</th>
-                    <th>품목허가번호</th>
-                    <th>등급</th>
-                    <th>허가일자</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {list.map((item, idx) => (
-                    <tr key={idx} onClick={() => setSelectedItem(item)}>
-                      <td>{getVal(item, ['PRDT_NM', 'prdtNm'])}</td>
-                      <td>{getVal(item, ['ENTP_NM', 'BSSH_NM', 'entpNm'])}</td>
-                      <td>{getVal(item, ['MEDDEV_ITEM_NO', 'PRMISN_NO', 'meddevItemNo'])}</td>
-                      <td>{getVal(item, ['GRADE', 'grade'])}</td>
-                      <td>{getVal(item, ['PRMISN_YMD', 'prmisnYmd'])}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* 상세 정보 팝업 */}
-          {selectedItem && (
-            <div className="modal-overlay" onClick={() => setSelectedItem(null)}>
-              <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                <div className="modal-header">
-                  <h2>[상세 정보] {getVal(selectedItem, ['PRDT_NM', 'prdtNm'])}</h2>
-                  <button className="close-btn" onClick={() => setSelectedItem(null)}>닫기</button>
-                </div>
-
-                <table className="detail-table">
-                  <tbody>
-                    {displayFields.map((f, i) => (
-                      <tr key={i}>
-                        <th>{f.label}<br/><span style={{fontSize:'10px', color:'#7f8c8d'}}>{f.keys[0]}</span></th>
-                        <td>{getVal(selectedItem, f.keys)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </div>
-      );
+      } catch (err) {
+        console.error(err);
+        statusEl.innerText = '❌ 오류 발생: ' + err.message;
+      }
     }
 
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<SimpleApp />);
+    function renderTable(items) {
+      let html = `
+        <table>
+          <thead>
+            <tr>
+              <th>No</th>
+              <th>업체명</th>
+              <th>품목명</th>
+              <th>품목허가번호</th>
+              <th>등급</th>
+              <th>허가일자</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      items.forEach((item, idx) => {
+        html += `
+          <tr onclick="showDetail(${idx})">
+            <td>${idx + 1}</td>
+            <td>${item.ENTP_NM || item.BSSH_NM || '-'}</td>
+            <td>${item.PRDT_NM || '-'}</td>
+            <td>${item.MEDDEV_ITEM_NO || '-'}</td>
+            <td>${item.GRADE || '-'}</td>
+            <td>${item.PRMISN_YMD || '-'}</td>
+          </tr>
+        `;
+      });
+
+      html += `</tbody></table>`;
+      document.getElementById('result-area').innerHTML = html;
+    }
+
+    // 목록 중 하나를 클릭했을 때 상세조회 API를 호출하거나 기존 데이터를 팝업으로 띄움
+    async function showDetail(idx) {
+      const item = currentItems[idx];
+      const itemNo = item.MEDDEV_ITEM_NO;
+      
+      document.getElementById('modalTitle').innerText = `[상세] ${item.PRDT_NM || '의료기기 상세 정보'}`;
+      
+      let bodyHtml = `
+        <table class="detail-table">
+          <tr><th>업체명</th><td>${item.ENTP_NM || item.BSSH_NM || '-'}</td></tr>
+          <tr><th>품목명</th><td>${item.PRDT_NM || '-'}</td></tr>
+          <tr><th>품목허가번호</th><td>${item.MEDDEV_ITEM_NO || '-'}</td></tr>
+          <tr><th>등급</th><td>${item.GRADE || '-'}</td></tr>
+          <tr><th>허가일자</th><td>${item.PRMISN_YMD || '-'}</td></tr>
+          <tr><th>사용목적</th><td>${item.USE_PURPS || '-'}</td></tr>
+          <tr><th>품목유형코드명</th><td>${item.PRDT_TYP_CD_NM || '-'}</td></tr>
+          <tr><th>제조방법</th><td>${item.MNFT_MTHD || '-'}</td></tr>
+          <tr><th>취소취하구분명</th><td>${item.CANCEL_WDRAW_DIVS_CD_NM || '-'}</td></tr>
+          <tr><th>취소취하일자</th><td>${item.CANCEL_WDRAW_YMD || '-'}</td></tr>
+        </table>
+      `;
+
+      // 만약 세부 상세조회 API(/getMdlpPrdlstPrmisnItem04)를 직접 한 번 더 찌르고 싶다면 여기서 호출 가능합니다.
+      document.getElementById('modalBody').innerHTML = bodyHtml;
+      document.getElementById('detailModal').style.display = 'flex';
+    }
+
+    function closeModal() {
+      document.getElementById('detailModal').style.display = 'none';
+    }
   </script>
 </body>
 </html>
