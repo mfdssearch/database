@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MFDS 품목허가 정보 단일 검색 (Rev 7.2)</title>
+  <title>MFDS 품목허가 정보 단일 검색 (Rev 7.3)</title>
   
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -11,11 +11,11 @@
 
   <style>
     body { font-family: 'Malgun Gothic', sans-serif; background-color: #f8f9fa; padding: 20px; color: #333; margin: 0; }
-    .container { max-width: 1000px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-top: 5px solid #2c3e50; }
+    .container { max-width: 1000px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-top: 5px solid #2980b9; }
     
     .header-area { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ecf0f1; padding-bottom: 15px; margin-bottom: 20px; }
     .header-area h1 { margin: 0; color: #2c3e50; font-size: 22px; }
-    .version-badge { background-color: #27ae60; color: white; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+    .version-badge { background-color: #8e44ad; color: white; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; }
     
     .search-panel { background: #ecf0f1; border-radius: 6px; padding: 20px; margin-bottom: 25px; display: flex; gap: 10px; }
     .search-panel input { flex: 1; padding: 12px; border: 1px solid #bdc3c7; border-radius: 4px; font-size: 15px; }
@@ -59,10 +59,14 @@
 
       const API_KEY = '098da3673de823360ff33e80761e71e43429732d41fa932b68265be812843028'; 
 
-      // 튼튼한 배열 정규화 함수 (API가 객체 1개를 주든, 배열을 주든, 빈 값이든 완벽 대처)
+      // 데이터 구조를 강력하게 추출하는 만능 파서
       const parseItems = (data) => {
         try {
-          const itemsContainer = data?.response?.body?.items || data?.body?.items;
+          // 공공데이터 JSON의 다양한 구조(response.body.items.item 등) 탐색
+          const root = data?.response || data;
+          const body = root?.body || root;
+          const itemsContainer = body?.items;
+          
           if (!itemsContainer) return [];
           
           const rawList = itemsContainer.item || itemsContainer;
@@ -70,9 +74,25 @@
 
           return Array.isArray(rawList) ? rawList : [rawList];
         } catch (e) {
-          console.error("데이터 파싱 오류:", e);
+          console.error("파싱 에러:", e);
           return [];
         }
+      };
+
+      // 키 값이 대소문자나 다르게 내려올 때를 대비한 안전 추출 헬퍼
+      const getVal = (item, keys) => {
+        if (!item) return '-';
+        for (let k of keys) {
+          // 대소문자 및 정확한 매칭 확인
+          for (let itemKey of Object.keys(item)) {
+            if (itemKey.toLowerCase() === k.toLowerCase()) {
+              if (item[itemKey] !== undefined && item[itemKey] !== null && item[itemKey] !== '') {
+                return item[itemKey];
+              }
+            }
+          }
+        }
+        return '-';
       };
 
       const handleSearch = async (e) => {
@@ -95,13 +115,13 @@
           const text = await response.text();
           const data = JSON.parse(text);
 
-          console.log("식약처 API 파싱 대상 데이터:", data);
+          console.log("식약처 API 응답 원본 데이터:", data);
 
           const parsedList = parseItems(data);
 
           setList(parsedList);
           if (parsedList.length === 0) {
-            setError(`검색 결과가 없습니다. (F12 콘솔창의 '파싱 대상 데이터' 구조를 확인해 보세요)`);
+            setError(`검색 결과가 없습니다. (F12 콘솔창의 응답 데이터를 확인해 보세요)`);
           }
 
         } catch (err) {
@@ -113,23 +133,23 @@
       };
 
       const displayFields = [
-        { key: 'ENTP_NM', label: '업체명' },
-        { key: 'PRDT_NM', label: '품목명' },
-        { key: 'MEDDEV_ITEM_NO', label: '의료기기품목허가번호' },
-        { key: 'GRADE', label: '등급' },
-        { key: 'PRMISN_YMD', label: '허가일자' },
-        { key: 'USE_PURPS', label: '사용목적' },
-        { key: 'PRDT_TYP_CD_NM', label: '품목유형코드명' },
-        { key: 'MNFT_MTHD', label: '제조방법' },
-        { key: 'CANCEL_WDRAW_DIVS_CD_NM', label: '취소취하구분명' },
-        { key: 'CANCEL_WDRAW_YMD', label: '취소취하일자' }
+        { label: '업체명', keys: ['ENTP_NM', 'BSSH_NM', 'entpNm'] },
+        { label: '품목명', keys: ['PRDT_NM', 'prdtNm'] },
+        { label: '의료기기품목허가번호', keys: ['MEDDEV_ITEM_NO', 'PRMISN_NO', 'meddevItemNo'] },
+        { label: '등급', keys: ['GRADE', 'grade'] },
+        { label: '허가일자', keys: ['PRMISN_YMD', 'prmisnYmd'] },
+        { label: '사용목적', keys: ['USE_PURPS', 'usePurps'] },
+        { label: '품목유형코드명', keys: ['PRDT_TYP_CD_NM', 'prdtTypCdNm'] },
+        { label: '제조방법', keys: ['MNFT_MTHD', 'mnftMthd'] },
+        { label: '취소취하구분명', keys: ['CANCEL_WDRAW_DIVS_CD_NM', 'cancelWdrawDivsCdNm'] },
+        { label: '취소취하일자', keys: ['CANCEL_WDRAW_YMD', 'cancelWdrawYmd'] }
       ];
 
       return (
         <div className="container">
           <div className="header-area">
             <h1>⚕️ 품목허가 정보 단일 검색</h1>
-            <span className="version-badge">Rev 7.2</span>
+            <span className="version-badge">Rev 7.3</span>
           </div>
           
           <form className="search-panel" onSubmit={handleSearch}>
@@ -143,7 +163,7 @@
           </form>
 
           {loading && <div className="status">식약처 서버에서 데이터를 조회하고 있습니다...</div>}
-          {error && <div className="error" dangerouslySetInnerHTML={{__html: error}}></div>}
+          {error && <div className="error">{error}</div>}
 
           {!loading && list.length > 0 && (
             <div>
@@ -161,11 +181,11 @@
                 <tbody>
                   {list.map((item, idx) => (
                     <tr key={idx} onClick={() => setSelectedItem(item)}>
-                      <td>{item.PRDT_NM || '-'}</td>
-                      <td>{item.ENTP_NM || item.BSSH_NM || '-'}</td>
-                      <td>{item.MEDDEV_ITEM_NO || '-'}</td>
-                      <td>{item.GRADE || '-'}</td>
-                      <td>{item.PRMISN_YMD || '-'}</td>
+                      <td>{getVal(item, ['PRDT_NM', 'prdtNm'])}</td>
+                      <td>{getVal(item, ['ENTP_NM', 'BSSH_NM', 'entpNm'])}</td>
+                      <td>{getVal(item, ['MEDDEV_ITEM_NO', 'PRMISN_NO', 'meddevItemNo'])}</td>
+                      <td>{getVal(item, ['GRADE', 'grade'])}</td>
+                      <td>{getVal(item, ['PRMISN_YMD', 'prmisnYmd'])}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -178,16 +198,16 @@
             <div className="modal-overlay" onClick={() => setSelectedItem(null)}>
               <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
-                  <h2>[상세 정보] {selectedItem.PRDT_NM || '무제'}</h2>
+                  <h2>[상세 정보] {getVal(selectedItem, ['PRDT_NM', 'prdtNm'])}</h2>
                   <button className="close-btn" onClick={() => setSelectedItem(null)}>닫기</button>
                 </div>
 
                 <table className="detail-table">
                   <tbody>
-                    {displayFields.map(f => (
-                      <tr key={f.key}>
-                        <th>{f.label}<br/><span style={{fontSize:'10px', color:'#7f8c8d'}}>{f.key}</span></th>
-                        <td>{selectedItem[f.key] || '-'}</td>
+                    {displayFields.map((f, i) => (
+                      <tr key={i}>
+                        <th>{f.label}<br/><span style={{fontSize:'10px', color:'#7f8c8d'}}>{f.keys[0]}</span></th>
+                        <td>{getVal(selectedItem, f.keys)}</td>
                       </tr>
                     ))}
                   </tbody>
