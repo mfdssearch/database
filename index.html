@@ -11,25 +11,33 @@
 
   <style>
     body { font-family: 'Arial', 'Malgun Gothic', sans-serif; background-color: #f4f7f6; padding: 20px; color: #333; margin: 0; }
-    .container { max-width: 1100px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-top: 5px solid #2c3e50; }
+    .container { max-width: 1200px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-top: 5px solid #2c3e50; }
     
     .header-area { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2c3e50; padding-bottom: 15px; margin-bottom: 25px; }
     .header-area h1 { margin: 0; color: #2c3e50; font-size: 24px; font-weight: 800; }
-    .version-badge { background-color: #34495e; color: white; padding: 5px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; letter-spacing: 0.5px; }
+    .version-badge { background-color: #e74c3c; color: white; padding: 5px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; letter-spacing: 0.5px; }
     
     .search-panel { background: #ecf0f1; border-radius: 8px; padding: 25px; margin-bottom: 30px; }
-    .search-panel h3 { margin-top: 0; margin-bottom: 15px; font-size: 16px; color: #34495e; }
-    .search-grid { display: flex; gap: 15px; align-items: flex-end; }
-    .input-group { flex: 1; display: flex; flex-direction: column; }
+    .search-panel h3 { margin-top: 0; margin-bottom: 20px; font-size: 16px; color: #34495e; border-bottom: 1px dashed #bdc3c7; padding-bottom: 10px; }
+    
+    .search-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 20px; }
+    .search-grid.full-width { grid-template-columns: 1fr; }
+    
+    .input-group { display: flex; flex-direction: column; }
     .input-group label { font-size: 14px; font-weight: bold; margin-bottom: 8px; color: #2c3e50; }
     .input-group input { padding: 12px; border: 1px solid #bdc3c7; border-radius: 4px; font-size: 15px; transition: border-color 0.2s; }
     .input-group input:focus { outline: none; border-color: #3498db; box-shadow: 0 0 5px rgba(52, 152, 219, 0.3); }
     
-    .search-grid button { padding: 0 30px; height: 45px; background-color: #2980b9; color: white; border: none; border-radius: 4px; font-size: 15px; font-weight: bold; cursor: pointer; white-space: nowrap; transition: background-color 0.2s; }
-    .search-grid button:hover { background-color: #1c5980; }
-    .search-grid button:disabled { background-color: #95a5a6; cursor: not-allowed; }
+    .date-range-group { display: flex; align-items: center; gap: 10px; }
+    .date-range-group input { flex: 1; }
+    .date-range-group span { font-weight: bold; color: #7f8c8d; }
 
-    .section-title { font-size: 18px; color: #2980b9; border-bottom: 2px solid #3498db; padding-bottom: 8px; margin-top: 30px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: flex-end; }
+    .btn-container { display: flex; justify-content: center; margin-top: 10px; }
+    .btn-container button { padding: 15px 50px; background-color: #2980b9; color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background-color 0.2s; width: 100%; max-width: 400px; }
+    .btn-container button:hover { background-color: #1c5980; }
+    .btn-container button:disabled { background-color: #95a5a6; cursor: not-allowed; }
+
+    .section-title { font-size: 18px; color: #2980b9; border-bottom: 2px solid #3498db; padding-bottom: 8px; margin-top: 40px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: flex-end; }
     .result-count { font-size: 14px; color: #7f8c8d; font-weight: normal; }
     
     table { width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 20px; }
@@ -54,7 +62,6 @@
     .detail-table { width: 100%; border-collapse: collapse; }
     .detail-table th { background: #f2f6f8; width: 25%; color: #34495e; border: 1px solid #ddd; padding: 12px; }
     .detail-table td { border: 1px solid #ddd; padding: 12px; line-height: 1.6; white-space: pre-wrap; }
-    
     .section-header { background: #e2e8f0 !important; color: #2c3e50 !important; font-weight: bold; text-align: center !important; font-size: 15px; }
   </style>
 </head>
@@ -66,8 +73,13 @@
     const { useState } = React;
 
     function App() {
-      const [prdtNm, setPrdtNm] = useState(''); 
-      const [bsshNm, setBsshNm] = useState(''); 
+      // 5가지 검색 조건 State
+      const [companyName, setCompanyName] = useState('');     // 1. 업체명
+      const [bizLicenseNo, setBizLicenseNo] = useState('');   // 2. 업허가번호
+      const [productName, setProductName] = useState('');     // 3. 품목명/모델명/상품명
+      const [itemLicenseNo, setItemLicenseNo] = useState(''); // 4. 품목허가번호
+      const [dateStart, setDateStart] = useState('');         // 5. 허가일자 시작 (YYYY-MM)
+      const [dateEnd, setDateEnd] = useState('');             // 5. 허가일자 종료 (YYYY-MM)
       
       const [deviceResults, setDeviceResults] = useState([]);
       const [trialResults, setTrialResults] = useState([]);
@@ -88,11 +100,28 @@
         return Array.isArray(items) ? items : [items];
       };
 
+      // 날짜 필터링 헬퍼 함수 (형식이 다를 수 있는 날짜 데이터를 YYYYMM 형식으로 비교)
+      const isWithinDateRange = (targetDateStr, start, end) => {
+        if (!targetDateStr) return false;
+        // targetDateStr 예시: "2023-05-12" 또는 "20230512"
+        const cleanTarget = targetDateStr.replace(/[^0-9]/g, '').substring(0, 6); // YYYYMM 추출
+        
+        if (start) {
+          const cleanStart = start.replace(/[^0-9]/g, '');
+          if (cleanTarget < cleanStart) return false;
+        }
+        if (end) {
+          const cleanEnd = end.replace(/[^0-9]/g, '');
+          if (cleanTarget > cleanEnd) return false;
+        }
+        return true;
+      };
+
       const handleSearch = async (e) => {
         e.preventDefault();
         
-        if (!prdtNm.trim() && !bsshNm.trim()) {
-          return alert('제품명이나 업체명 중 최소 하나를 입력해주세요.');
+        if (!companyName.trim() && !bizLicenseNo.trim() && !productName.trim() && !itemLicenseNo.trim() && !dateStart && !dateEnd) {
+          return alert('최소 한 가지 이상의 검색 조건을 입력해주세요.');
         }
 
         setIsLoading(true);
@@ -102,59 +131,100 @@
         setHasSearched(true);
 
         try {
-          const kwProduct = prdtNm.trim();
-          const kwCompany = bsshNm.trim();
+          const kwCompany = companyName.trim();
+          const kwProduct = productName.trim();
+          const kwItemLicense = itemLicenseNo.trim();
 
+          // =========================================================
+          // 1. 시판 허가 기기 목록 조회 (API: MdlpPrdlstPrmisnInfoService05)
+          // =========================================================
           let deviceQuery = `serviceKey=${API_KEY}&pageNo=1&numOfRows=100&type=json`;
-          if (kwProduct) deviceQuery += `&PRDT_NM=${encodeURIComponent(kwProduct)}`;
+          // 매핑: 업체명 -> ENTP_NM
           if (kwCompany) deviceQuery += `&ENTP_NM=${encodeURIComponent(kwCompany)}`; 
+          // 매핑: 품목명 -> PRDT_NM
+          if (kwProduct) deviceQuery += `&PRDT_NM=${encodeURIComponent(kwProduct)}`;
+          // 매핑: 품목허가번호 -> MEDDEV_ITEM_NO
+          if (kwItemLicense) deviceQuery += `&MEDDEV_ITEM_NO=${encodeURIComponent(kwItemLicense)}`;
+
           const deviceUrl = `https://corsproxy.io/?${encodeURIComponent(`https://apis.data.go.kr/1471000/MdlpPrdlstPrmisnInfoService05/getMdlpPrdlstPrmisnList04?${deviceQuery}`)}`;
 
+          // =========================================================
+          // 2. 임상시험 현황 조회 (API: MdeqClncTestPlanAprvAplyListService)
+          // 임상시험은 신청업체(APLY_BSSH_NM)와 제조업체(MNFT_IPRT_BSSH_NM)가 다를 수 있어 두 번 호출
+          // =========================================================
+          
           let trialQuery1 = `serviceKey=${API_KEY}&pageNo=1&numOfRows=100&type=json`;
           if (kwProduct) trialQuery1 += `&PRDT_NM=${encodeURIComponent(kwProduct)}`;
+          // 매핑: 업체명 -> APLY_BSSH_NM (신청업체)
           if (kwCompany) trialQuery1 += `&APLY_BSSH_NM=${encodeURIComponent(kwCompany)}`;
-          const trialUrl1 = `https://corsproxy.io/?${encodeURIComponent(`https://apis.data.go.kr/1471000/MdeqClncTestPlanAprvAplyListService/getMdeqClncTestPlanAprvAplyListInq?${trialQuery1}`)}`;
 
           let trialQuery2 = `serviceKey=${API_KEY}&pageNo=1&numOfRows=100&type=json`;
           if (kwProduct) trialQuery2 += `&PRDT_NM=${encodeURIComponent(kwProduct)}`;
+          // 매핑: 업체명 -> MNFT_IPRT_BSSH_NM (제조수입업체)
           if (kwCompany) trialQuery2 += `&MNFT_IPRT_BSSH_NM=${encodeURIComponent(kwCompany)}`;
+
+          const trialUrl1 = `https://corsproxy.io/?${encodeURIComponent(`https://apis.data.go.kr/1471000/MdeqClncTestPlanAprvAplyListService/getMdeqClncTestPlanAprvAplyListInq?${trialQuery1}`)}`;
           const trialUrl2 = `https://corsproxy.io/?${encodeURIComponent(`https://apis.data.go.kr/1471000/MdeqClncTestPlanAprvAplyListService/getMdeqClncTestPlanAprvAplyListInq?${trialQuery2}`)}`;
 
-          const requests = [
-            fetch(deviceUrl).catch(() => ({ ok: false })), 
-            fetch(trialUrl1).catch(() => ({ ok: false }))
-          ];
+          // 병렬 요청 실행
+          const requests = [fetch(deviceUrl).catch(() => ({ ok: false }))];
+          requests.push(fetch(trialUrl1).catch(() => ({ ok: false })));
+          
           if (kwCompany) {
             requests.push(fetch(trialUrl2).catch(() => ({ ok: false })));
           }
 
           const responses = await Promise.all(requests);
 
+          // 데이터 정제 및 필터링 시작
+          let rawDevices = [];
           if (responses[0] && responses[0].ok) {
-            const deviceData = await responses[0].json();
-            setDeviceResults(normalizeItems(deviceData?.body?.items));
+            const data = await responses[0].json();
+            rawDevices = normalizeItems(data?.body?.items);
           }
 
-          let mergedTrials = [];
+          let rawTrials = [];
           if (responses[1] && responses[1].ok) {
-            const trialData1 = await responses[1].json();
-            mergedTrials = [...mergedTrials, ...normalizeItems(trialData1?.body?.items)];
+            const data = await responses[1].json();
+            rawTrials = [...rawTrials, ...normalizeItems(data?.body?.items)];
           }
           if (responses[2] && responses[2].ok) {
-            const trialData2 = await responses[2].json();
-            mergedTrials = [...mergedTrials, ...normalizeItems(trialData2?.body?.items)];
+            const data = await responses[2].json();
+            rawTrials = [...rawTrials, ...normalizeItems(data?.body?.items)];
           }
 
-          const uniqueTrials = Array.from(new Map(mergedTrials.map(item => [item.CLST_PLAN_APRV_NO, item])).values());
-          setTrialResults(uniqueTrials);
+          // 클라이언트 단독 필터 적용 (날짜 범위 및 업허가번호)
+          const kwBizLicense = bizLicenseNo.replace(/[^0-9]/g, ''); // 숫자만 추출
 
-          if (!responses[0].ok && !responses[1].ok) {
-            throw new Error('프록시 서버 응답 오류');
-          }
+          const filteredDevices = rawDevices.filter(item => {
+            // 업허가번호 필터
+            if (kwBizLicense && item.MEDDEV_ENTP_NO && !item.MEDDEV_ENTP_NO.includes(kwBizLicense)) return false;
+            // 날짜 범위 필터 (시판 기기 허가일자: PRMISN_YMD)
+            if ((dateStart || dateEnd) && !isWithinDateRange(item.PRMISN_YMD, dateStart, dateEnd)) return false;
+            return true;
+          });
+
+          // 임상시험 중복 제거 후 필터 적용
+          const uniqueTrialsMap = new Map();
+          rawTrials.forEach(item => {
+            if (item.CLST_PLAN_APRV_NO) uniqueTrialsMap.set(item.CLST_PLAN_APRV_NO, item);
+          });
+          const uniqueTrials = Array.from(uniqueTrialsMap.values());
+
+          const filteredTrials = uniqueTrials.filter(item => {
+            // 임상시험은 보통 '품목허가번호'가 없거나 다를 수 있지만, 필드 입력시 제한용으로 사용
+            if (kwItemLicense && item.MEDDEV_ITEM_NO && !item.MEDDEV_ITEM_NO.includes(kwItemLicense)) return false;
+            // 날짜 범위 필터 (임상시험 승인일자: APPROVAL_DATE)
+            if ((dateStart || dateEnd) && !isWithinDateRange(item.APPROVAL_DATE, dateStart, dateEnd)) return false;
+            return true;
+          });
+
+          setDeviceResults(filteredDevices);
+          setTrialResults(filteredTrials);
 
         } catch (err) {
           console.error('검색 오류:', err);
-          setError('네트워크 지연 또는 서버 오류로 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
+          setError('네트워크 지연 또는 서버 오류로 데이터를 불러오지 못했습니다.');
         } finally {
           setIsLoading(false);
         }
@@ -236,39 +306,87 @@
         <div className="container">
           <div className="header-area">
             <h1>⚕️ MFDS 통합 의료기기 Database</h1>
-            {/* 우측 상단 리비전 뱃지 추가 */}
-            <span className="version-badge">Rev 1.0</span>
+            <span className="version-badge">Rev 2.0</span>
           </div>
           
           <form className="search-panel" onSubmit={handleSearch}>
-            <h3>🔍 조건 검색 (둘 중 하나만 입력하거나 일부 단어만 입력해도 검색됩니다)</h3>
+            <h3>🔍 다중 조건 검색 (여러 조건을 조합하여 더 정확하게 검색할 수 있습니다)</h3>
+            
             <div className="search-grid">
+              {/* 1. 업체명 */}
               <div className="input-group">
-                <label>제품명 (또는 모델명)</label>
+                <label>1. 업체명 (제조/수입사)</label>
                 <input 
                   type="text" 
-                  value={prdtNm} 
-                  onChange={(e) => setPrdtNm(e.target.value)} 
-                  placeholder="예: 주사기 (일부 단어 허용)" 
-                />
-              </div>
-              <div className="input-group">
-                <label>업체명 (제조/수입업체)</label>
-                <input 
-                  type="text" 
-                  value={bsshNm} 
-                  onChange={(e) => setBsshNm(e.target.value)} 
+                  value={companyName} 
+                  onChange={(e) => setCompanyName(e.target.value)} 
                   placeholder="예: 리센스메디컬 또는 리센스" 
                 />
               </div>
+
+              {/* 2. 업허가번호 */}
+              <div className="input-group">
+                <label>2. 업허가번호</label>
+                <input 
+                  type="text" 
+                  value={bizLicenseNo} 
+                  onChange={(e) => setBizLicenseNo(e.target.value)} 
+                  placeholder="예: 1234 (숫자만 입력 가능)" 
+                />
+              </div>
+
+              {/* 3. 품목명/모델명/상품명 */}
+              <div className="input-group">
+                <label>3. 품목명 / 모델명 / 상품명</label>
+                <input 
+                  type="text" 
+                  value={productName} 
+                  onChange={(e) => setProductName(e.target.value)} 
+                  placeholder="예: 주사기, TargetCool" 
+                />
+              </div>
+
+              {/* 4. 품목허가번호 */}
+              <div className="input-group">
+                <label>4. 품목허가번호</label>
+                <input 
+                  type="text" 
+                  value={itemLicenseNo} 
+                  onChange={(e) => setItemLicenseNo(e.target.value)} 
+                  placeholder="예: 수허21-123" 
+                />
+              </div>
+            </div>
+
+            {/* 5. 허가일자 범위 */}
+            <div className="search-grid full-width">
+              <div className="input-group">
+                <label>5. 허가(승인) 일자 범위 (년도 및 월 선택)</label>
+                <div className="date-range-group">
+                  <input 
+                    type="month" 
+                    value={dateStart} 
+                    onChange={(e) => setDateStart(e.target.value)} 
+                  />
+                  <span>~</span>
+                  <input 
+                    type="month" 
+                    value={dateEnd} 
+                    onChange={(e) => setDateEnd(e.target.value)} 
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="btn-container">
               <button type="submit" disabled={isLoading}>
-                {isLoading ? '검색 중...' : '통합 검색'}
+                {isLoading ? '데이터베이스 조회 중...' : '통합 검색 실행'}
               </button>
             </div>
           </form>
 
           {error && <p className="error">{error}</p>}
-          {isLoading && <p className="loading">식약처 데이터베이스 4곳을 동시 검색 중입니다...</p>}
+          {isLoading && <p className="loading">다중 API 서버와 통신하여 데이터를 필터링하고 있습니다...</p>}
 
           {!isLoading && hasSearched && !error && (
             <div>
@@ -282,7 +400,7 @@
                     <tr>
                       <th>품목명(제품명)</th>
                       <th>업체명</th>
-                      <th>허가번호</th>
+                      <th>품목허가번호</th>
                       <th>등급</th>
                       <th>허가일자</th>
                     </tr>
@@ -300,7 +418,7 @@
                   </tbody>
                 </table>
               ) : (
-                <div className="no-data">시판 허가된 기기 검색 결과가 없습니다.</div>
+                <div className="no-data">조건에 맞는 시판 허가된 기기 검색 결과가 없습니다.</div>
               )}
 
               <div className="section-title">
@@ -313,7 +431,7 @@
                     <tr>
                       <th>임상시험 승인번호</th>
                       <th>임상시험 구분</th>
-                      <th>제품명</th>
+                      <th>대상 품목명</th>
                       <th>신청 업체명</th>
                       <th>승인일자</th>
                     </tr>
@@ -324,18 +442,19 @@
                         <td>{item.CLST_PLAN_APRV_NO}</td>
                         <td>{item.CLINIC_EXAM_CODE_NAME || item.CLST_DIVS_NM || '-'}</td>
                         <td>{item.PRDT_NM}</td>
-                        <td>{item.APLY_BSSH_NM || item.MNFT_IPRT_BSSH_NM || item.BSSH_NM}</td>
+                        <td>{item.APLY_BSSH_NM || item.MNFT_IPRT_BSSH_NM}</td>
                         <td>{item.APPROVAL_DATE}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               ) : (
-                <div className="no-data">관련된 임상시험 검색 결과가 없습니다.</div>
+                <div className="no-data">조건에 맞는 관련된 임상시험 검색 결과가 없습니다.</div>
               )}
             </div>
           )}
 
+          {/* 팝업 모달 영역 (상세 정보 유지) */}
           {selectedItem && (
             <div className="modal-overlay" onClick={closeModal}>
               <div className="modal-content" onClick={(e) => e.stopPropagation()}>
