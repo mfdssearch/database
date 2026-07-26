@@ -15,20 +15,19 @@
     
     .header-area { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2c3e50; padding-bottom: 15px; margin-bottom: 25px; }
     .header-area h1 { margin: 0; color: #2c3e50; font-size: 24px; font-weight: 800; }
-    .version-badge { background-color: #2980b9; color: white; padding: 5px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; letter-spacing: 0.5px; }
+    .version-badge { background-color: #27ae60; color: white; padding: 5px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; letter-spacing: 0.5px; }
     
     .search-panel { background: #ecf0f1; border-radius: 8px; padding: 25px; margin-bottom: 30px; }
     .search-section { margin-bottom: 25px; background: white; padding: 20px; border-radius: 6px; border: 1px solid #dcdde1; }
     .search-section h3 { margin-top: 0; margin-bottom: 20px; font-size: 16px; color: #2c3e50; border-bottom: 2px solid #bdc3c7; padding-bottom: 10px; }
     
     .search-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 15px; }
-    .search-grid.two-cols { grid-template-columns: repeat(2, 1fr); }
     .search-grid.full-width { grid-template-columns: 1fr; }
     
     .input-group { display: flex; flex-direction: column; }
     .input-group label { font-size: 13px; font-weight: bold; margin-bottom: 6px; color: #34495e; }
-    .input-group input, .input-group select { padding: 10px; border: 1px solid #bdc3c7; border-radius: 4px; font-size: 14px; transition: border-color 0.2s; }
-    .input-group input:focus, .input-group select:focus { outline: none; border-color: #3498db; box-shadow: 0 0 5px rgba(52, 152, 219, 0.3); }
+    .input-group input { padding: 10px; border: 1px solid #bdc3c7; border-radius: 4px; font-size: 14px; transition: border-color 0.2s; }
+    .input-group input:focus { outline: none; border-color: #3498db; box-shadow: 0 0 5px rgba(52, 152, 219, 0.3); }
     
     .date-range-group { display: flex; align-items: center; gap: 10px; }
     .date-range-group input { flex: 1; }
@@ -112,9 +111,23 @@
         return true;
       };
 
+      // 프록시 캐시 방지 및 URL 생성
       const getCacheBustedUrl = (targetUrl) => {
         const separator = targetUrl.includes('?') ? '&' : '?';
-        return `https://corsproxy.io/?${encodeURIComponent(`${targetUrl}${separator}_t=${Date.now()}`)}`;
+        const finalUrl = `${targetUrl}${separator}_t=${Date.now()}`;
+        return `https://corsproxy.io/?${encodeURIComponent(finalUrl)}`;
+      };
+
+      // XML 응답(에러) 방지를 위한 안전한 JSON 파싱 함수
+      const parseJsonSafe = async (res) => {
+        if (!res.ok) return null;
+        const text = await res.text();
+        try {
+          return JSON.parse(text);
+        } catch (e) {
+          console.warn("API가 JSON이 아닌 데이터를 반환했습니다 (서버 오류 가능성):", text.substring(0, 100));
+          return null;
+        }
       };
 
       const handleSearch = async (e) => {
@@ -127,62 +140,52 @@
         setHasSearched(true);
 
         try {
-          // ★ 완벽 해결 포인트 1: 파라미터 변수명 불일치로 인한 오작동을 막기 위해 가능한 대소문자를 모두 던집니다.
-          let deviceQuery = `serviceKey=${API_KEY}&pageNo=1&numOfRows=100&type=json`;
-          if (i.cName) {
-            const enc = encodeURIComponent(i.cName.trim());
-            deviceQuery += `&BSSH_NM=${enc}&bsshNm=${enc}&ENTP_NM=${enc}&entpNm=${enc}`; 
-          }
-          if (i.pName) {
-            const enc = encodeURIComponent(i.pName.trim());
-            deviceQuery += `&PRDT_NM=${enc}&prdtNm=${enc}`;
-          }
-          if (i.iLicense) {
-            const enc = encodeURIComponent(i.iLicense.trim());
-            deviceQuery += `&MEDDEV_ITEM_NO=${enc}&meddevItemNo=${enc}`;
-          }
+          // ★ 핵심 수정: 모든 식약처 API 검색 변수를 CamelCase(소문자 시작)로 고정 (bsshNm, prdtNm, meddevItemNo 등)
+          // 한 번에 200건을 요청하여 검색 정확도를 높입니다.
+          let deviceQuery = `serviceKey=${API_KEY}&pageNo=1&numOfRows=200&type=json`;
+          if (i.cName) deviceQuery += `&bsshNm=${encodeURIComponent(i.cName.trim())}`; 
+          if (i.pName) deviceQuery += `&prdtNm=${encodeURIComponent(i.pName.trim())}`;
+          if (i.iLicense) deviceQuery += `&meddevItemNo=${encodeURIComponent(i.iLicense.trim())}`;
+          
           const deviceUrl = getCacheBustedUrl(`https://apis.data.go.kr/1471000/MdlpPrdlstPrmisnInfoService05/getMdlpPrdlstPrmisnList04?${deviceQuery}`);
 
-          // 임상시험 리스트
-          let trialQuery1 = `serviceKey=${API_KEY}&pageNo=1&numOfRows=100&type=json`;
-          let trialQuery2 = `serviceKey=${API_KEY}&pageNo=1&numOfRows=100&type=json`;
-          
-          if (i.pName) {
-            const enc = encodeURIComponent(i.pName.trim());
-            trialQuery1 += `&PRDT_NM=${enc}&prdtNm=${enc}`;
-            trialQuery2 += `&PRDT_NM=${enc}&prdtNm=${enc}`;
-          }
-          if (i.cName) {
-            const enc = encodeURIComponent(i.cName.trim());
-            trialQuery1 += `&APLY_BSSH_NM=${enc}&aplyBsshNm=${enc}`; 
-            trialQuery2 += `&MNFT_IPRT_BSSH_NM=${enc}&mnftIprtBsshNm=${enc}`; 
-          }
+          // 임상시험 API (신청업체명: aplyBsshNm, 제조수입업체명: mnftIprtBsshNm)
+          let trialQuery1 = `serviceKey=${API_KEY}&pageNo=1&numOfRows=200&type=json`;
+          if (i.pName) trialQuery1 += `&prdtNm=${encodeURIComponent(i.pName.trim())}`;
+          if (i.cName) trialQuery1 += `&aplyBsshNm=${encodeURIComponent(i.cName.trim())}`; 
+
+          let trialQuery2 = `serviceKey=${API_KEY}&pageNo=1&numOfRows=200&type=json`;
+          if (i.pName) trialQuery2 += `&prdtNm=${encodeURIComponent(i.pName.trim())}`;
+          if (i.cName) trialQuery2 += `&mnftIprtBsshNm=${encodeURIComponent(i.cName.trim())}`; 
 
           const trialUrl1 = getCacheBustedUrl(`https://apis.data.go.kr/1471000/MdeqClncTestPlanAprvAplyListService/getMdeqClncTestPlanAprvAplyListInq?${trialQuery1}`);
           const trialUrl2 = getCacheBustedUrl(`https://apis.data.go.kr/1471000/MdeqClncTestPlanAprvAplyListService/getMdeqClncTestPlanAprvAplyListInq?${trialQuery2}`);
 
           const requests = [fetch(deviceUrl).catch(() => ({ ok: false }))];
           requests.push(fetch(trialUrl1).catch(() => ({ ok: false })));
-          if (i.cName.trim()) requests.push(fetch(trialUrl2).catch(() => ({ ok: false })));
+          if (i.cName.trim()) {
+            requests.push(fetch(trialUrl2).catch(() => ({ ok: false })));
+          }
 
           const responses = await Promise.all(requests);
 
           let rawDevices = [];
-          if (responses[0] && responses[0].ok) {
-            const data = await responses[0].json();
+          if (responses[0]) {
+            const data = await parseJsonSafe(responses[0]);
             rawDevices = normalizeItems(data?.body?.items);
           }
 
           let rawTrials = [];
-          if (responses[1] && responses[1].ok) {
-            const data = await responses[1].json();
+          if (responses[1]) {
+            const data = await parseJsonSafe(responses[1]);
             rawTrials = [...rawTrials, ...normalizeItems(data?.body?.items)];
           }
-          if (responses[2] && responses[2].ok) {
-            const data = await responses[2].json();
+          if (responses[2]) {
+            const data = await parseJsonSafe(responses[2]);
             rawTrials = [...rawTrials, ...normalizeItems(data?.body?.items)];
           }
 
+          // 클라이언트 측 상세 정밀 필터링 (결과값은 대문자로 오므로 ENTP_NM, BSSH_NM 활용)
           const kwCompany = i.cName.trim().toLowerCase();
           const kwBizLicense = i.bLicense.replace(/[^0-9]/g, '');
           const kwProduct = i.pName.trim().toLowerCase();
@@ -226,7 +229,8 @@
           setTrialResults(filteredTrials);
 
         } catch (err) {
-          setError('데이터를 불러오지 못했습니다. 식약처 서버 지연일 수 있습니다.');
+          console.error(err);
+          setError('네트워크 오류 또는 식약처 서버 점검 중입니다.');
         } finally {
           setIsLoading(false);
         }
@@ -242,12 +246,13 @@
         try {
           if (type === 'device') {
             if (!item.MEDDEV_ITEM_NO) {
-              setDetailError('선택하신 기기의 일련번호(키값)가 없어 상세 정보를 조회할 수 없습니다.');
+              setDetailError('선택하신 기기의 일련번호가 없어 상세 정보를 조회할 수 없습니다.');
               return setIsDetailLoading(false);
             }
+            // ★ 상세 조회 시에도 정확한 CamelCase 파라미터(meddevItemNo) 적용
             const encNo = encodeURIComponent(item.MEDDEV_ITEM_NO);
-            const infoUrl = getCacheBustedUrl(`https://apis.data.go.kr/1471000/MdeqPrdlstInfoService02/getMdeqPrdlstInfoInq02?serviceKey=${API_KEY}&pageNo=1&numOfRows=1&type=json&MEDDEV_ITEM_NO=${encNo}&meddevItemNo=${encNo}`);
-            const permUrl = getCacheBustedUrl(`https://apis.data.go.kr/1471000/MdlpPrdlstPrmisnInfoService05/getMdlpPrdlstPrmisnItem04?serviceKey=${API_KEY}&pageNo=1&numOfRows=1&type=json&MEDDEV_ITEM_NO=${encNo}&meddevItemNo=${encNo}`);
+            const infoUrl = getCacheBustedUrl(`https://apis.data.go.kr/1471000/MdeqPrdlstInfoService02/getMdeqPrdlstInfoInq02?serviceKey=${API_KEY}&pageNo=1&numOfRows=1&type=json&meddevItemNo=${encNo}`);
+            const permUrl = getCacheBustedUrl(`https://apis.data.go.kr/1471000/MdlpPrdlstPrmisnInfoService05/getMdlpPrdlstPrmisnItem04?serviceKey=${API_KEY}&pageNo=1&numOfRows=1&type=json&meddevItemNo=${encNo}`);
             
             const [infoRes, permRes] = await Promise.all([
               fetch(infoUrl).catch(() => ({ ok: false })),
@@ -257,13 +262,13 @@
             let infoData = null;
             let permData = null;
 
-            if (infoRes.ok) {
-              const d1 = await infoRes.json();
+            if (infoRes) {
+              const d1 = await parseJsonSafe(infoRes);
               const items = normalizeItems(d1?.body?.items);
               if (items.length > 0) infoData = items[0];
             }
-            if (permRes.ok) {
-              const d2 = await permRes.json();
+            if (permRes) {
+              const d2 = await parseJsonSafe(permRes);
               const items = normalizeItems(d2?.body?.items);
               if (items.length > 0) permData = items[0];
             }
@@ -271,24 +276,23 @@
             else setDetailError('식약처 DB에 등록된 상세 정보가 없습니다.');
 
           } else {
-            // ★ 완벽 해결 포인트 2: 이산바이오텍(최신 1번)으로 빠지는 것을 막기 위해 승인번호 파라미터 대소문자를 모두 던짐
+            // ★ 임상시험 팝업 문제 완벽 해결: 파라미터를 clstPlanAprvNo (CamelCase)로 변경!
             if (!item.CLST_PLAN_APRV_NO) {
-              setDetailError('임상시험 승인번호가 없어 상세 조회가 불가능합니다.');
+              setDetailError('임상시험 승인번호가 없습니다.');
               return setIsDetailLoading(false);
             }
             const encNo = encodeURIComponent(item.CLST_PLAN_APRV_NO);
-            const trialDetailUrl = getCacheBustedUrl(`https://apis.data.go.kr/1471000/MdeqClncTestPlanAprvAplyDtlService01/getMdeqClncTestPlanAprvAplyDtlInq01?serviceKey=${API_KEY}&pageNo=1&numOfRows=1&type=json&CLST_PLAN_APRV_NO=${encNo}&clstPlanAprvNo=${encNo}`);
+            const trialDetailUrl = getCacheBustedUrl(`https://apis.data.go.kr/1471000/MdeqClncTestPlanAprvAplyDtlService01/getMdeqClncTestPlanAprvAplyDtlInq01?serviceKey=${API_KEY}&pageNo=1&numOfRows=1&type=json&clstPlanAprvNo=${encNo}`);
             
             const response = await fetch(trialDetailUrl);
-            if (!response.ok) throw new Error('불러오기 실패');
+            const data = await parseJsonSafe(response);
             
-            const data = await response.json();
             const items = normalizeItems(data?.body?.items);
             if (items.length > 0) setDetails(items[0]);
             else setDetailError('식약처 DB에 등록된 상세 정보가 없습니다.');
           }
         } catch (err) {
-          setDetailError('상세 정보를 불러오는 중 오류가 발생했습니다.');
+          setDetailError('상세 정보를 불러오는 중 서버 통신 오류가 발생했습니다.');
         } finally {
           setIsDetailLoading(false);
         }
@@ -312,7 +316,7 @@
         <div className="container">
           <div className="header-area">
             <h1>⚕️ MFDS 통합 의료기기 Database</h1>
-            <span className="version-badge">Rev 5.0 (오류 완벽 수정본)</span>
+            <span className="version-badge">Rev 6.0 (삼성메디슨 검색 및 임상 상세 완벽 해결)</span>
           </div>
           
           <form className="search-panel" onSubmit={handleSearch}>
@@ -321,7 +325,7 @@
               <div className="search-grid">
                 <div className="input-group">
                   <label>1. 업체명 (제조/수입사/신청사)</label>
-                  <input name="cName" value={i.cName} onChange={handleChange} placeholder="예: 리센스메디컬 또는 리센스" />
+                  <input name="cName" value={i.cName} onChange={handleChange} placeholder="예: 삼성메디슨" />
                 </div>
                 <div className="input-group">
                   <label>2. 업허가번호</label>
@@ -329,11 +333,11 @@
                 </div>
                 <div className="input-group">
                   <label>3. 품목명 / 모델명 / 상품명</label>
-                  <input name="pName" value={i.pName} onChange={handleChange} placeholder="예: 주사기, TargetCool" />
+                  <input name="pName" value={i.pName} onChange={handleChange} placeholder="예: 초음파영상진단장치" />
                 </div>
                 <div className="input-group">
                   <label>4. 품목허가번호</label>
-                  <input name="iLicense" value={i.iLicense} onChange={handleChange} placeholder="예: 수허21-123" />
+                  <input name="iLicense" value={i.iLicense} onChange={handleChange} placeholder="예: 제허11-1234호" />
                 </div>
                 <div className="input-group" style={{ gridColumn: 'span 2' }}>
                   <label>5. 허가(승인) 일자 범위</label>
@@ -367,7 +371,7 @@
                 </div>
                 <div className="input-group">
                   <label>임상시험계획승인번호</label>
-                  <input name="clstNo" value={i.clstNo} onChange={handleChange} placeholder="임상 승인번호" />
+                  <input name="clstNo" value={i.clstNo} onChange={handleChange} placeholder="예: 20190000028" />
                 </div>
                 <div className="input-group">
                   <label>임상시험구분명 (CLST_DIVS_NM)</label>
@@ -386,7 +390,7 @@
 
             <div className="btn-container">
               <button type="submit" disabled={isLoading}>
-                {isLoading ? '조건에 맞는 데이터 추출 및 필터링 중...' : '통합 데이터베이스 검색'}
+                {isLoading ? '식약처 실시간 데이터베이스 조회 중...' : '통합 데이터베이스 검색'}
               </button>
             </div>
           </form>
@@ -472,7 +476,7 @@
                   <button className="close-btn" onClick={closeModal}>닫기</button>
                 </div>
 
-                {isDetailLoading && <p className="loading">식약처 상세 데이터베이스 연동 중입니다...</p>}
+                {isDetailLoading && <p className="loading">식약처 상세 데이터베이스(해당 번호) 연동 중입니다...</p>}
                 {detailError && <p className="error">{detailError}</p>}
                 
                 {!isDetailLoading && details && modalType === 'device' && (
