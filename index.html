@@ -41,8 +41,8 @@
     .api-split-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
     .api-card { border: 1px solid #dcdde1; border-radius: 6px; overflow: hidden; }
     .api-card-header { padding: 15px; font-weight: bold; color: white; font-size: 15px; text-align: center; }
-    .api-card-header.api1 { background-color: #34495e; } /* API 1 색상 */
-    .api-card-header.api2 { background-color: #16a085; } /* API 2 색상 */
+    .api-card-header.api1 { background-color: #34495e; }
+    .api-card-header.api2 { background-color: #16a085; }
     .api-card-body { padding: 15px; background: #fafafa; height: 100%; }
     
     .detail-table { width: 100%; border-collapse: collapse; font-size: 13px; background: white; }
@@ -97,9 +97,11 @@
         setLoading(true); setError(''); setList([]); setHasSearched(true);
 
         try {
+          // 한번에 많은 결과를 가져오기 위해 numOfRows를 100으로 설정
           let query = `serviceKey=${API_KEY}&pageNo=1&numOfRows=100&type=json`;
-          // 식약처 서버가 확실히 인식하도록 소문자 카멜케이스 변수 사용
-          if (company) query += `&bsshNm=${encodeURIComponent(company.trim())}`;
+          
+          // ★ 수정 핵심: 시판 허가 API의 업체명 파라미터는 'entpNm' 입니다.
+          if (company) query += `&entpNm=${encodeURIComponent(company.trim())}`;
           if (license) query += `&meddevItemNo=${encodeURIComponent(license.trim())}`;
 
           const targetUrl = `https://apis.data.go.kr/1471000/MdlpPrdlstPrmisnInfoService05/getMdlpPrdlstPrmisnList04?${query}`;
@@ -108,7 +110,7 @@
 
           let rawItems = normalizeItems(data?.body?.items);
 
-          // 클라이언트 측 교차 검증 필터 (서버가 엉뚱한 데이터를 줄 경우 방어)
+          // 클라이언트 측 교차 검증 필터
           const kwCompany = company.trim().toLowerCase();
           const kwLicense = license.trim().toLowerCase();
 
@@ -122,10 +124,10 @@
           });
 
           setList(filtered);
-          if (filtered.length === 0) setError('조건에 맞는 검색 결과가 없습니다.');
+          if (filtered.length === 0) setError('조건에 맞는 기기가 없습니다. (식약처 DB에 등록되지 않았거나 검색어가 다를 수 있습니다.)');
 
         } catch (err) {
-          setError('검색 중 오류가 발생했습니다. (네트워크 지연 또는 서버 오류)');
+          setError('검색 중 오류가 발생했습니다. (네트워크 지연 또는 식약처 서버 오류)');
         } finally {
           setLoading(false);
         }
@@ -139,13 +141,13 @@
         setDetailLoading(true);
 
         try {
-          const encNo = encodeURIComponent(item.MEDDEV_ITEM_NO);
+          const encNo = encodeURIComponent(item.MEDDEV_ITEM_NO || item.PRMISN_NO); // 둘 중 있는 키값 사용
 
-          // [API 1] 허가 정보 상세설명 (MdlpPrdlstPrmisnInfoService05)
+          // [API 1] 허가 정보 상세설명
           const url1 = getCacheBustedUrl(`https://apis.data.go.kr/1471000/MdlpPrdlstPrmisnInfoService05/getMdlpPrdlstPrmisnItem04?serviceKey=${API_KEY}&pageNo=1&numOfRows=10&type=json&meddevItemNo=${encNo}`);
           
-          // [API 2] 품목 정보 상세설명 (MdeqPrdlstInfoService02) - prmisnNo 파라미터도 함께 던져 매칭 확률 극대화
-          const url2 = getCacheBustedUrl(`https://apis.data.go.kr/1471000/MdeqPrdlstInfoService02/getMdeqPrdlstInfoInq02?serviceKey=${API_KEY}&pageNo=1&numOfRows=10&type=json&meddevItemNo=${encNo}&prmisnNo=${encNo}`);
+          // [API 2] 품목 정보 상세설명 (스펙/치수/주의사항)
+          const url2 = getCacheBustedUrl(`https://apis.data.go.kr/1471000/MdeqPrdlstInfoService02/getMdeqPrdlstInfoInq02?serviceKey=${API_KEY}&pageNo=1&numOfRows=10&type=json&prmisnNo=${encNo}`);
 
           const [res1, res2] = await Promise.all([
             fetch(url1).catch(() => ({ ok: false })),
@@ -162,7 +164,7 @@
           if (items2.length > 0) setDetailApi2(items2[0]);
 
         } catch (err) {
-          alert('상세 정보를 불러오는 중 오류가 발생했습니다.');
+          alert('상세 정보를 불러오는 중 서버 통신 오류가 발생했습니다.');
         } finally {
           setDetailLoading(false);
         }
@@ -170,7 +172,6 @@
 
       const closeModal = () => setSelectedItem(null);
 
-      // 출력할 항목명 정의
       const fieldsApi1 = [
         { k: 'PRDT_NM', n: '품목명' },
         { k: 'ENTP_NM', n: '업체명' },
@@ -203,7 +204,7 @@
           
           <form className="search-panel" onSubmit={handleSearch}>
             <div className="input-group">
-              <label>업체명</label>
+              <label>업체명 (제조/수입사)</label>
               <input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="예: 삼성메디슨, 리센스메디컬" />
             </div>
             <div className="input-group">
@@ -211,7 +212,7 @@
               <input value={license} onChange={(e) => setLicense(e.target.value)} placeholder="예: 제허11-1234호" />
             </div>
             <button type="submit" className="btn-search" disabled={loading}>
-              {loading ? '검색 중...' : '통합 검색'}
+              {loading ? '식약처 실시간 검색 중...' : '통합 검색'}
             </button>
           </form>
 
@@ -219,13 +220,13 @@
 
           {!loading && hasSearched && list.length > 0 && (
             <div>
-              <h3>총 {list.length}건의 기기가 검색되었습니다. (상세를 보려면 클릭하세요)</h3>
+              <h3>총 {list.length}건의 기기가 검색되었습니다. (상세 비교를 원하시면 기기를 클릭하세요)</h3>
               <table>
                 <thead>
                   <tr>
                     <th>품목명</th>
                     <th>업체명</th>
-                    <th>허가번호</th>
+                    <th>품목허가번호</th>
                     <th>등급</th>
                     <th>허가일자</th>
                   </tr>
@@ -235,7 +236,7 @@
                     <tr key={idx} onClick={() => handleRowClick(item)}>
                       <td>{item.PRDT_NM}</td>
                       <td>{item.ENTP_NM || item.BSSH_NM}</td>
-                      <td>{item.MEDDEV_ITEM_NO}</td>
+                      <td>{item.MEDDEV_ITEM_NO || item.PRMISN_NO}</td>
                       <td>{item.GRADE}</td>
                       <td>{item.PRMISN_YMD}</td>
                     </tr>
@@ -245,12 +246,11 @@
             </div>
           )}
 
-          {/* 상세 비교 팝업 모달 */}
           {selectedItem && (
             <div className="modal-overlay" onClick={closeModal}>
               <div className="modal-content" onClick={e => e.stopPropagation()}>
                 <div className="modal-header">
-                  <h2>{selectedItem.PRDT_NM} 통합 상세 정보</h2>
+                  <h2>{selectedItem.PRDT_NM} 상세 데이터 융합 분석</h2>
                   <button className="close-btn" onClick={closeModal}>닫기</button>
                 </div>
                 
@@ -259,11 +259,10 @@
                 ) : (
                   <div className="api-split-container">
                     
-                    {/* [API 1] 정보 영역 */}
                     <div className="api-card">
                       <div className="api-card-header api1">
-                        [API 1] MdlpPrdlstPrmisnInfoService05<br/>
-                        <span style={{fontSize:'12px', fontWeight:'normal'}}>(행정 및 허가 이력 데이터)</span>
+                        [API 1] 시판 허가 정보 상세<br/>
+                        <span style={{fontSize:'12px', fontWeight:'normal'}}>(MdlpPrdlstPrmisnInfoService05)</span>
                       </div>
                       <div className="api-card-body">
                         {detailApi1 ? (
@@ -283,11 +282,10 @@
                       </div>
                     </div>
 
-                    {/* [API 2] 정보 영역 */}
                     <div className="api-card">
                       <div className="api-card-header api2">
-                        [API 2] MdeqPrdlstInfoService02<br/>
-                        <span style={{fontSize:'12px', fontWeight:'normal'}}>(기기 물리적 스펙 및 안전 정보)</span>
+                        [API 2] 품목 정보 상세 (스펙/안전)<br/>
+                        <span style={{fontSize:'12px', fontWeight:'normal'}}>(MdeqPrdlstInfoService02)</span>
                       </div>
                       <div className="api-card-body">
                         {detailApi2 ? (
@@ -312,7 +310,6 @@
               </div>
             </div>
           )}
-
         </div>
       );
     }
