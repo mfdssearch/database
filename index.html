@@ -15,6 +15,7 @@
     
     .header-area { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2c3e50; padding-bottom: 15px; margin-bottom: 25px; }
     .header-area h1 { margin: 0; color: #2c3e50; font-size: 24px; font-weight: 800; }
+    .version-badge { background-color: #34495e; color: white; padding: 5px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; letter-spacing: 0.5px; }
     
     .search-panel { background: #ecf0f1; border-radius: 8px; padding: 25px; margin-bottom: 30px; }
     .search-panel h3 { margin-top: 0; margin-bottom: 15px; font-size: 16px; color: #34495e; }
@@ -104,25 +105,21 @@
           const kwProduct = prdtNm.trim();
           const kwCompany = bsshNm.trim();
 
-          // 1. 시판 허가 기기 목록 (API 4) - 파라미터: ENTP_NM (한 번에 100건 불러오기)
           let deviceQuery = `serviceKey=${API_KEY}&pageNo=1&numOfRows=100&type=json`;
           if (kwProduct) deviceQuery += `&PRDT_NM=${encodeURIComponent(kwProduct)}`;
           if (kwCompany) deviceQuery += `&ENTP_NM=${encodeURIComponent(kwCompany)}`; 
           const deviceUrl = `https://corsproxy.io/?${encodeURIComponent(`https://apis.data.go.kr/1471000/MdlpPrdlstPrmisnInfoService05/getMdlpPrdlstPrmisnList04?${deviceQuery}`)}`;
 
-          // 2. 임상시험 진행 현황 (API 2) - 파라미터: APLY_BSSH_NM (신청업체)
           let trialQuery1 = `serviceKey=${API_KEY}&pageNo=1&numOfRows=100&type=json`;
           if (kwProduct) trialQuery1 += `&PRDT_NM=${encodeURIComponent(kwProduct)}`;
           if (kwCompany) trialQuery1 += `&APLY_BSSH_NM=${encodeURIComponent(kwCompany)}`;
           const trialUrl1 = `https://corsproxy.io/?${encodeURIComponent(`https://apis.data.go.kr/1471000/MdeqClncTestPlanAprvAplyListService/getMdeqClncTestPlanAprvAplyListInq?${trialQuery1}`)}`;
 
-          // 3. 임상시험 진행 현황 (API 2) - 파라미터: MNFT_IPRT_BSSH_NM (제조수입업체)
           let trialQuery2 = `serviceKey=${API_KEY}&pageNo=1&numOfRows=100&type=json`;
           if (kwProduct) trialQuery2 += `&PRDT_NM=${encodeURIComponent(kwProduct)}`;
           if (kwCompany) trialQuery2 += `&MNFT_IPRT_BSSH_NM=${encodeURIComponent(kwCompany)}`;
           const trialUrl2 = `https://corsproxy.io/?${encodeURIComponent(`https://apis.data.go.kr/1471000/MdeqClncTestPlanAprvAplyListService/getMdeqClncTestPlanAprvAplyListInq?${trialQuery2}`)}`;
 
-          // 병렬 호출 (임상시험은 제조사와 신청사가 다를 수 있어 두 번 호출하여 합침)
           const requests = [
             fetch(deviceUrl).catch(() => ({ ok: false })), 
             fetch(trialUrl1).catch(() => ({ ok: false }))
@@ -133,13 +130,11 @@
 
           const responses = await Promise.all(requests);
 
-          // 시판 기기 데이터 저장
           if (responses[0] && responses[0].ok) {
             const deviceData = await responses[0].json();
             setDeviceResults(normalizeItems(deviceData?.body?.items));
           }
 
-          // 임상시험 데이터 병합 (중복 제거 포함)
           let mergedTrials = [];
           if (responses[1] && responses[1].ok) {
             const trialData1 = await responses[1].json();
@@ -150,7 +145,6 @@
             mergedTrials = [...mergedTrials, ...normalizeItems(trialData2?.body?.items)];
           }
 
-          // 임상 승인번호(CLST_PLAN_APRV_NO)를 기준으로 중복 항목 제거
           const uniqueTrials = Array.from(new Map(mergedTrials.map(item => [item.CLST_PLAN_APRV_NO, item])).values());
           setTrialResults(uniqueTrials);
 
@@ -242,6 +236,8 @@
         <div className="container">
           <div className="header-area">
             <h1>⚕️ MFDS 통합 의료기기 Database</h1>
+            {/* 우측 상단 리비전 뱃지 추가 */}
+            <span className="version-badge">Rev 1.0</span>
           </div>
           
           <form className="search-panel" onSubmit={handleSearch}>
@@ -262,7 +258,7 @@
                   type="text" 
                   value={bsshNm} 
                   onChange={(e) => setBsshNm(e.target.value)} 
-                  placeholder="예: 리센스메디컬" 
+                  placeholder="예: 리센스메디컬 또는 리센스" 
                 />
               </div>
               <button type="submit" disabled={isLoading}>
