@@ -15,7 +15,7 @@
     
     .header-area { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2c3e50; padding-bottom: 15px; margin-bottom: 25px; }
     .header-area h1 { margin: 0; color: #2c3e50; font-size: 24px; font-weight: 800; }
-    .version-badge { background-color: #d35400; color: white; padding: 5px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; letter-spacing: 0.5px; }
+    .version-badge { background-color: #2980b9; color: white; padding: 5px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; letter-spacing: 0.5px; }
     
     .search-panel { background: #ecf0f1; border-radius: 8px; padding: 25px; margin-bottom: 30px; }
     .search-section { margin-bottom: 25px; background: white; padding: 20px; border-radius: 6px; border: 1px solid #dcdde1; }
@@ -74,20 +74,7 @@
 
     function App() {
       const [i, setI] = useState({
-        cName: '',     
-        bLicense: '',  
-        pName: '',     
-        iLicense: '',  
-        dStart: '',    
-        dEnd: '',      
-        grade: '',       
-        pType: '',       
-        induty: '',      
-        region: '',      
-        clstNo: '',      
-        clstDivs: '',    
-        clstTitle: '',   
-        clstDtl: ''      
+        cName: '', bLicense: '', pName: '', iLicense: '', dStart: '', dEnd: '', grade: '', pType: '', induty: '', region: '', clstNo: '', clstDivs: '', clstTitle: '', clstDtl: ''      
       });
 
       const handleChange = (e) => setI({ ...i, [e.target.name]: e.target.value });
@@ -125,12 +112,9 @@
         return true;
       };
 
-      // ★ 캐시 방지(Bypass) 핵심 헬퍼 함수
-      // 프록시 서버가 과거 검색결과나 다른 항목의 팝업 내용을 재탕하지 못하도록 항상 새로운 시간값을 꼬리표로 붙입니다.
       const getCacheBustedUrl = (targetUrl) => {
         const separator = targetUrl.includes('?') ? '&' : '?';
-        const finalUrl = `${targetUrl}${separator}_t=${Date.now()}`;
-        return `https://corsproxy.io/?${encodeURIComponent(finalUrl)}`;
+        return `https://corsproxy.io/?${encodeURIComponent(`${targetUrl}${separator}_t=${Date.now()}`)}`;
       };
 
       const handleSearch = async (e) => {
@@ -143,31 +127,43 @@
         setHasSearched(true);
 
         try {
-          // 시판 허가 기기 (API 4) : 식약처 공식 파라미터는 ENTP_NM 입니다.
+          // ★ 완벽 해결 포인트 1: 파라미터 변수명 불일치로 인한 오작동을 막기 위해 가능한 대소문자를 모두 던집니다.
           let deviceQuery = `serviceKey=${API_KEY}&pageNo=1&numOfRows=100&type=json`;
-          if (i.cName) deviceQuery += `&ENTP_NM=${encodeURIComponent(i.cName.trim())}`; 
-          if (i.pName) deviceQuery += `&PRDT_NM=${encodeURIComponent(i.pName.trim())}`;
-          if (i.iLicense) deviceQuery += `&MEDDEV_ITEM_NO=${encodeURIComponent(i.iLicense.trim())}`;
+          if (i.cName) {
+            const enc = encodeURIComponent(i.cName.trim());
+            deviceQuery += `&BSSH_NM=${enc}&bsshNm=${enc}&ENTP_NM=${enc}&entpNm=${enc}`; 
+          }
+          if (i.pName) {
+            const enc = encodeURIComponent(i.pName.trim());
+            deviceQuery += `&PRDT_NM=${enc}&prdtNm=${enc}`;
+          }
+          if (i.iLicense) {
+            const enc = encodeURIComponent(i.iLicense.trim());
+            deviceQuery += `&MEDDEV_ITEM_NO=${enc}&meddevItemNo=${enc}`;
+          }
           const deviceUrl = getCacheBustedUrl(`https://apis.data.go.kr/1471000/MdlpPrdlstPrmisnInfoService05/getMdlpPrdlstPrmisnList04?${deviceQuery}`);
 
-          // 임상시험 리스트 (API 2) : APLY_BSSH_NM(신청사) 와 MNFT_IPRT_BSSH_NM(제조사) 두 번 찌름
+          // 임상시험 리스트
           let trialQuery1 = `serviceKey=${API_KEY}&pageNo=1&numOfRows=100&type=json`;
-          if (i.pName) trialQuery1 += `&PRDT_NM=${encodeURIComponent(i.pName.trim())}`;
-          if (i.cName) trialQuery1 += `&APLY_BSSH_NM=${encodeURIComponent(i.cName.trim())}`; 
-
           let trialQuery2 = `serviceKey=${API_KEY}&pageNo=1&numOfRows=100&type=json`;
-          if (i.pName) trialQuery2 += `&PRDT_NM=${encodeURIComponent(i.pName.trim())}`;
-          if (i.cName) trialQuery2 += `&MNFT_IPRT_BSSH_NM=${encodeURIComponent(i.cName.trim())}`; 
+          
+          if (i.pName) {
+            const enc = encodeURIComponent(i.pName.trim());
+            trialQuery1 += `&PRDT_NM=${enc}&prdtNm=${enc}`;
+            trialQuery2 += `&PRDT_NM=${enc}&prdtNm=${enc}`;
+          }
+          if (i.cName) {
+            const enc = encodeURIComponent(i.cName.trim());
+            trialQuery1 += `&APLY_BSSH_NM=${enc}&aplyBsshNm=${enc}`; 
+            trialQuery2 += `&MNFT_IPRT_BSSH_NM=${enc}&mnftIprtBsshNm=${enc}`; 
+          }
 
           const trialUrl1 = getCacheBustedUrl(`https://apis.data.go.kr/1471000/MdeqClncTestPlanAprvAplyListService/getMdeqClncTestPlanAprvAplyListInq?${trialQuery1}`);
           const trialUrl2 = getCacheBustedUrl(`https://apis.data.go.kr/1471000/MdeqClncTestPlanAprvAplyListService/getMdeqClncTestPlanAprvAplyListInq?${trialQuery2}`);
 
           const requests = [fetch(deviceUrl).catch(() => ({ ok: false }))];
           requests.push(fetch(trialUrl1).catch(() => ({ ok: false })));
-          
-          if (i.cName.trim()) {
-            requests.push(fetch(trialUrl2).catch(() => ({ ok: false })));
-          }
+          if (i.cName.trim()) requests.push(fetch(trialUrl2).catch(() => ({ ok: false })));
 
           const responses = await Promise.all(requests);
 
@@ -191,7 +187,6 @@
           const kwBizLicense = i.bLicense.replace(/[^0-9]/g, '');
           const kwProduct = i.pName.trim().toLowerCase();
 
-          // 안전한 클라이언트 필터링 (검색어가 포함되어 있는지만 체크)
           const filteredDevices = rawDevices.filter(item => {
             const entpNm = (item.ENTP_NM || '').toLowerCase();
             const bsshNm = (item.BSSH_NM || '').toLowerCase();
@@ -231,7 +226,6 @@
           setTrialResults(filteredTrials);
 
         } catch (err) {
-          console.error('검색 오류:', err);
           setError('데이터를 불러오지 못했습니다. 식약처 서버 지연일 수 있습니다.');
         } finally {
           setIsLoading(false);
@@ -247,8 +241,13 @@
 
         try {
           if (type === 'device') {
-            const infoUrl = getCacheBustedUrl(`https://apis.data.go.kr/1471000/MdeqPrdlstInfoService02/getMdeqPrdlstInfoInq02?serviceKey=${API_KEY}&pageNo=1&numOfRows=1&type=json&MEDDEV_ITEM_NO=${encodeURIComponent(item.MEDDEV_ITEM_NO)}`);
-            const permUrl = getCacheBustedUrl(`https://apis.data.go.kr/1471000/MdlpPrdlstPrmisnInfoService05/getMdlpPrdlstPrmisnItem04?serviceKey=${API_KEY}&pageNo=1&numOfRows=1&type=json&MEDDEV_ITEM_NO=${encodeURIComponent(item.MEDDEV_ITEM_NO)}`);
+            if (!item.MEDDEV_ITEM_NO) {
+              setDetailError('선택하신 기기의 일련번호(키값)가 없어 상세 정보를 조회할 수 없습니다.');
+              return setIsDetailLoading(false);
+            }
+            const encNo = encodeURIComponent(item.MEDDEV_ITEM_NO);
+            const infoUrl = getCacheBustedUrl(`https://apis.data.go.kr/1471000/MdeqPrdlstInfoService02/getMdeqPrdlstInfoInq02?serviceKey=${API_KEY}&pageNo=1&numOfRows=1&type=json&MEDDEV_ITEM_NO=${encNo}&meddevItemNo=${encNo}`);
+            const permUrl = getCacheBustedUrl(`https://apis.data.go.kr/1471000/MdlpPrdlstPrmisnInfoService05/getMdlpPrdlstPrmisnItem04?serviceKey=${API_KEY}&pageNo=1&numOfRows=1&type=json&MEDDEV_ITEM_NO=${encNo}&meddevItemNo=${encNo}`);
             
             const [infoRes, permRes] = await Promise.all([
               fetch(infoUrl).catch(() => ({ ok: false })),
@@ -272,8 +271,14 @@
             else setDetailError('식약처 DB에 등록된 상세 정보가 없습니다.');
 
           } else {
-            // ★ 여기서 이산바이오텍만 나오던 문제 해결! 승인번호를 넘길 때 캐시 방지 코드가 적용된 URL로 요청합니다.
-            const trialDetailUrl = getCacheBustedUrl(`https://apis.data.go.kr/1471000/MdeqClncTestPlanAprvAplyDtlService01/getMdeqClncTestPlanAprvAplyDtlInq01?serviceKey=${API_KEY}&pageNo=1&numOfRows=1&type=json&CLST_PLAN_APRV_NO=${encodeURIComponent(item.CLST_PLAN_APRV_NO)}`);
+            // ★ 완벽 해결 포인트 2: 이산바이오텍(최신 1번)으로 빠지는 것을 막기 위해 승인번호 파라미터 대소문자를 모두 던짐
+            if (!item.CLST_PLAN_APRV_NO) {
+              setDetailError('임상시험 승인번호가 없어 상세 조회가 불가능합니다.');
+              return setIsDetailLoading(false);
+            }
+            const encNo = encodeURIComponent(item.CLST_PLAN_APRV_NO);
+            const trialDetailUrl = getCacheBustedUrl(`https://apis.data.go.kr/1471000/MdeqClncTestPlanAprvAplyDtlService01/getMdeqClncTestPlanAprvAplyDtlInq01?serviceKey=${API_KEY}&pageNo=1&numOfRows=1&type=json&CLST_PLAN_APRV_NO=${encNo}&clstPlanAprvNo=${encNo}`);
+            
             const response = await fetch(trialDetailUrl);
             if (!response.ok) throw new Error('불러오기 실패');
             
@@ -307,7 +312,7 @@
         <div className="container">
           <div className="header-area">
             <h1>⚕️ MFDS 통합 의료기기 Database</h1>
-            <span className="version-badge">Rev 4.0</span>
+            <span className="version-badge">Rev 5.0 (오류 완벽 수정본)</span>
           </div>
           
           <form className="search-panel" onSubmit={handleSearch}>
