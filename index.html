@@ -1,4 +1,4 @@
-\<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
@@ -101,38 +101,60 @@
         setHasSearched(true);
 
         try {
-          // ★오류 수정: ENTP_NM 등 임의 파라미터를 제거하고 
-          // 식약처 공식 표준인 BSSH_NM으로 두 API 모두 통일했습니다.
-          let deviceQuery = `serviceKey=${API_KEY}&pageNo=1&numOfRows=50&type=json`;
-          if (prdtNm.trim()) deviceQuery += `&PRDT_NM=${encodeURIComponent(prdtNm.trim())}`;
-          if (bsshNm.trim()) deviceQuery += `&BSSH_NM=${encodeURIComponent(bsshNm.trim())}`; 
+          const kwProduct = prdtNm.trim();
+          const kwCompany = bsshNm.trim();
 
-          let trialQuery = `serviceKey=${API_KEY}&pageNo=1&numOfRows=50&type=json`;
-          if (prdtNm.trim()) trialQuery += `&PRDT_NM=${encodeURIComponent(prdtNm.trim())}`;
-          if (bsshNm.trim()) trialQuery += `&BSSH_NM=${encodeURIComponent(bsshNm.trim())}`;
+          // 1. 시판 허가 기기 목록 (API 4) - 파라미터: ENTP_NM (한 번에 100건 불러오기)
+          let deviceQuery = `serviceKey=${API_KEY}&pageNo=1&numOfRows=100&type=json`;
+          if (kwProduct) deviceQuery += `&PRDT_NM=${encodeURIComponent(kwProduct)}`;
+          if (kwCompany) deviceQuery += `&ENTP_NM=${encodeURIComponent(kwCompany)}`; 
+          const deviceUrl = `https://corsproxy.io/?${encodeURIComponent(`https://apis.data.go.kr/1471000/MdlpPrdlstPrmisnInfoService05/getMdlpPrdlstPrmisnList04?${deviceQuery}`)}`;
 
-          const deviceTargetUrl = `https://apis.data.go.kr/1471000/MdlpPrdlstPrmisnInfoService05/getMdlpPrdlstPrmisnList04?${deviceQuery}`;
-          const trialTargetUrl = `https://apis.data.go.kr/1471000/MdeqClncTestPlanAprvAplyListService/getMdeqClncTestPlanAprvAplyListInq?${trialQuery}`;
-          
-          const deviceUrl = `https://corsproxy.io/?${encodeURIComponent(deviceTargetUrl)}`;
-          const trialUrl = `https://corsproxy.io/?${encodeURIComponent(trialTargetUrl)}`;
+          // 2. 임상시험 진행 현황 (API 2) - 파라미터: APLY_BSSH_NM (신청업체)
+          let trialQuery1 = `serviceKey=${API_KEY}&pageNo=1&numOfRows=100&type=json`;
+          if (kwProduct) trialQuery1 += `&PRDT_NM=${encodeURIComponent(kwProduct)}`;
+          if (kwCompany) trialQuery1 += `&APLY_BSSH_NM=${encodeURIComponent(kwCompany)}`;
+          const trialUrl1 = `https://corsproxy.io/?${encodeURIComponent(`https://apis.data.go.kr/1471000/MdeqClncTestPlanAprvAplyListService/getMdeqClncTestPlanAprvAplyListInq?${trialQuery1}`)}`;
 
-          const [deviceRes, trialRes] = await Promise.all([
+          // 3. 임상시험 진행 현황 (API 2) - 파라미터: MNFT_IPRT_BSSH_NM (제조수입업체)
+          let trialQuery2 = `serviceKey=${API_KEY}&pageNo=1&numOfRows=100&type=json`;
+          if (kwProduct) trialQuery2 += `&PRDT_NM=${encodeURIComponent(kwProduct)}`;
+          if (kwCompany) trialQuery2 += `&MNFT_IPRT_BSSH_NM=${encodeURIComponent(kwCompany)}`;
+          const trialUrl2 = `https://corsproxy.io/?${encodeURIComponent(`https://apis.data.go.kr/1471000/MdeqClncTestPlanAprvAplyListService/getMdeqClncTestPlanAprvAplyListInq?${trialQuery2}`)}`;
+
+          // 병렬 호출 (임상시험은 제조사와 신청사가 다를 수 있어 두 번 호출하여 합침)
+          const requests = [
             fetch(deviceUrl).catch(() => ({ ok: false })), 
-            fetch(trialUrl).catch(() => ({ ok: false }))
-          ]);
+            fetch(trialUrl1).catch(() => ({ ok: false }))
+          ];
+          if (kwCompany) {
+            requests.push(fetch(trialUrl2).catch(() => ({ ok: false })));
+          }
 
-          if (deviceRes.ok) {
-            const deviceData = await deviceRes.json();
+          const responses = await Promise.all(requests);
+
+          // 시판 기기 데이터 저장
+          if (responses[0] && responses[0].ok) {
+            const deviceData = await responses[0].json();
             setDeviceResults(normalizeItems(deviceData?.body?.items));
           }
 
-          if (trialRes.ok) {
-            const trialData = await trialRes.json();
-            setTrialResults(normalizeItems(trialData?.body?.items));
+          // 임상시험 데이터 병합 (중복 제거 포함)
+          let mergedTrials = [];
+          if (responses[1] && responses[1].ok) {
+            const trialData1 = await responses[1].json();
+            mergedTrials = [...mergedTrials, ...normalizeItems(trialData1?.body?.items)];
+          }
+          if (responses[2] && responses[2].ok) {
+            const trialData2 = await responses[2].json();
+            mergedTrials = [...mergedTrials, ...normalizeItems(trialData2?.body?.items)];
           }
 
-          if (!deviceRes.ok && !trialRes.ok) {
+          // 임상 승인번호(CLST_PLAN_APRV_NO)를 기준으로 중복 항목 제거
+          const uniqueTrials = Array.from(new Map(mergedTrials.map(item => [item.CLST_PLAN_APRV_NO, item])).values());
+          setTrialResults(uniqueTrials);
+
+          if (!responses[0].ok && !responses[1].ok) {
             throw new Error('프록시 서버 응답 오류');
           }
 
@@ -240,7 +262,7 @@
                   type="text" 
                   value={bsshNm} 
                   onChange={(e) => setBsshNm(e.target.value)} 
-                  placeholder="예: 리센스 (일부 단어 허용)" 
+                  placeholder="예: 리센스메디컬" 
                 />
               </div>
               <button type="submit" disabled={isLoading}>
@@ -273,7 +295,7 @@
                     {deviceResults.map((item, index) => (
                       <tr key={`dev-${index}`} onClick={() => handleRowClick('device', item)}>
                         <td>{item.PRDT_NM}</td>
-                        <td>{item.BSSH_NM || item.ENTP_NM}</td>
+                        <td>{item.ENTP_NM || item.BSSH_NM}</td>
                         <td>{item.MEDDEV_ITEM_NO}</td>
                         <td>{item.GRADE}</td>
                         <td>{item.PRMISN_YMD}</td>
@@ -339,7 +361,7 @@
                     <tbody>
                       <tr><td colSpan="2" className="section-header">📌 기본 및 허가 정보</td></tr>
                       <tr><th>제품명 (품목명)</th><td>{getDetailVal('PRDT_NM')}</td></tr>
-                      <tr><th>업체명</th><td>{getDetailVal('BSSH_NM') !== '-' ? getDetailVal('BSSH_NM') : getDetailVal('ENTP_NM')}</td></tr>
+                      <tr><th>업체명</th><td>{getDetailVal('ENTP_NM') !== '-' ? getDetailVal('ENTP_NM') : getDetailVal('BSSH_NM')}</td></tr>
                       <tr><th>의료기기품목허가번호</th><td>{getDetailVal('MEDDEV_ITEM_NO')}</td></tr>
                       <tr><th>허가일자</th><td>{getDetailVal('PRMISN_YMD')}</td></tr>
                       <tr><th>취소/취하 여부</th><td>{getDetailVal('CANCEL_WDRAW_DIVS_CD_NM') || '정상 유지'}</td></tr>
