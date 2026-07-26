@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MFDS 품목허가 정보 단일 검색 (Rev 7.1)</title>
+  <title>MFDS 품목허가 정보 단일 검색 (Rev 7.2)</title>
   
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -15,7 +15,7 @@
     
     .header-area { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ecf0f1; padding-bottom: 15px; margin-bottom: 20px; }
     .header-area h1 { margin: 0; color: #2c3e50; font-size: 22px; }
-    .version-badge { background-color: #d35400; color: white; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+    .version-badge { background-color: #27ae60; color: white; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; }
     
     .search-panel { background: #ecf0f1; border-radius: 6px; padding: 20px; margin-bottom: 25px; display: flex; gap: 10px; }
     .search-panel input { flex: 1; padding: 12px; border: 1px solid #bdc3c7; border-radius: 4px; font-size: 15px; }
@@ -50,7 +50,7 @@
     const { useState } = React;
 
     function SimpleApp() {
-      const [keyword, setKeyword] = useState('삼성메디슨'); // 테스트 편의를 위해 기본값 설정
+      const [keyword, setKeyword] = useState('');
       const [list, setList] = useState([]);
       const [loading, setLoading] = useState(false);
       const [error, setError] = useState('');
@@ -59,9 +59,20 @@
 
       const API_KEY = '098da3673de823360ff33e80761e71e43429732d41fa932b68265be812843028'; 
 
-      const normalizeItems = (items) => {
-        if (!items) return [];
-        return Array.isArray(items) ? items : [items];
+      // 튼튼한 배열 정규화 함수 (API가 객체 1개를 주든, 배열을 주든, 빈 값이든 완벽 대처)
+      const parseItems = (data) => {
+        try {
+          const itemsContainer = data?.response?.body?.items || data?.body?.items;
+          if (!itemsContainer) return [];
+          
+          const rawList = itemsContainer.item || itemsContainer;
+          if (!rawList) return [];
+
+          return Array.isArray(rawList) ? rawList : [rawList];
+        } catch (e) {
+          console.error("데이터 파싱 오류:", e);
+          return [];
+        }
       };
 
       const handleSearch = async (e) => {
@@ -74,8 +85,7 @@
         setSelectedItem(null);
 
         try {
-          // 식약처 API 호출 (numOfRows를 100으로 넉넉하게 확보)
-          const query = `serviceKey=${API_KEY}&pageNo=1&numOfRows=100&type=json&entpNm=${encodeURIComponent(keyword.trim())}&_t=${Date.now()}`;
+          const query = `serviceKey=${API_KEY}&pageNo=1&numOfRows=50&type=json&entpNm=${encodeURIComponent(keyword.trim())}&_t=${Date.now()}`;
           const targetUrl = `https://apis.data.go.kr/1471000/MdlpPrdlstPrmisnInfoService05/getMdlpPrdlstPrmisnList04?${query}`;
           const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
 
@@ -85,25 +95,13 @@
           const text = await response.text();
           const data = JSON.parse(text);
 
-          console.log("식약처 API 원본 응답:", data); // F12 콘솔에서 데이터 구조 확인 가능
+          console.log("식약처 API 파싱 대상 데이터:", data);
 
-          const rawItems = normalizeItems(data?.body?.items);
+          const parsedList = parseItems(data);
 
-          // 유연한 매칭 필터 (공백 제거 및 대소문자 무시 비교)
-          const cleanKeyword = keyword.trim().replace(/\s+/g, '').toLowerCase();
-          
-          const filtered = rawItems.filter(item => {
-            const entp = (item.ENTP_NM || item.BSSH_NM || '').replace(/\s+/g, '').toLowerCase();
-            return entp.includes(cleanKeyword);
-          });
-
-          // 만약 엄격한 필터링 결과가 0건이고 서버가 준 전체 데이터가 있다면, 
-          // 사용자가 '삼성'처럼 일부만 쳤을 때를 대비해 전체 목록을 우선 보여주거나 디버깅 유도
-          const finalResult = filtered.length > 0 ? filtered : rawItems;
-
-          setList(finalResult);
-          if (finalResult.length === 0) {
-            setError(`검색 결과가 없습니다.<br>1. F12를 눌러 콘솔창의 '식약처 API 원본 응답'을 확인해 보세요.<br>2. '삼성메디슨' 대신 간단히 '삼성' 또는 '메디슨'으로 검색해 보세요.`);
+          setList(parsedList);
+          if (parsedList.length === 0) {
+            setError(`검색 결과가 없습니다. (F12 콘솔창의 '파싱 대상 데이터' 구조를 확인해 보세요)`);
           }
 
         } catch (err) {
@@ -131,7 +129,7 @@
         <div className="container">
           <div className="header-area">
             <h1>⚕️ 품목허가 정보 단일 검색</h1>
-            <span className="version-badge">Rev 7.1</span>
+            <span className="version-badge">Rev 7.2</span>
           </div>
           
           <form className="search-panel" onSubmit={handleSearch}>
@@ -139,7 +137,7 @@
               type="text" 
               value={keyword} 
               onChange={(e) => setKeyword(e.target.value)} 
-              placeholder="예: 삼성메디슨, 메디슨 등 입력" 
+              placeholder="예: 삼성메디슨 입력" 
             />
             <button type="submit">검색</button>
           </form>
@@ -163,11 +161,11 @@
                 <tbody>
                   {list.map((item, idx) => (
                     <tr key={idx} onClick={() => setSelectedItem(item)}>
-                      <td>{item.PRDT_NM}</td>
-                      <td>{item.ENTP_NM || item.BSSH_NM}</td>
-                      <td>{item.MEDDEV_ITEM_NO}</td>
-                      <td>{item.GRADE}</td>
-                      <td>{item.PRMISN_YMD}</td>
+                      <td>{item.PRDT_NM || '-'}</td>
+                      <td>{item.ENTP_NM || item.BSSH_NM || '-'}</td>
+                      <td>{item.MEDDEV_ITEM_NO || '-'}</td>
+                      <td>{item.GRADE || '-'}</td>
+                      <td>{item.PRMISN_YMD || '-'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -180,7 +178,7 @@
             <div className="modal-overlay" onClick={() => setSelectedItem(null)}>
               <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
-                  <h2>[상세 정보] {selectedItem.PRDT_NM}</h2>
+                  <h2>[상세 정보] {selectedItem.PRDT_NM || '무제'}</h2>
                   <button className="close-btn" onClick={() => setSelectedItem(null)}>닫기</button>
                 </div>
 
