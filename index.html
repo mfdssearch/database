@@ -3,28 +3,58 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- 요청하신 탭 이름 변경 -->
   <title>MFDS_Database</title>
   
-  <!-- React 및 최신 브라우저 변환기(Babel 7) 불러오기 -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <!-- 구버전 Babel 6 대신 최신 Babel 7 적용 (하얀 화면 에러 해결) -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
   <style>
-    body { font-family: 'Malgun Gothic', sans-serif; background-color: #f4f7f6; padding: 20px; }
-    .container { max-width: 900px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-    h1 { color: #2c3e50; text-align: center; }
-    .search-box { display: flex; gap: 10px; margin-bottom: 20px; }
-    input { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; }
-    button { padding: 12px 20px; background-color: #3498db; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; }
-    button:hover { background-color: #2980b9; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-    th { background-color: #3498db; color: white; }
-    .error { color: red; text-align: center; }
-    .loading { text-align: center; color: #7f8c8d; font-weight: bold; }
+    body { font-family: 'Arial', 'Malgun Gothic', sans-serif; background-color: #f0f4f8; padding: 20px; color: #333; }
+    .container { max-width: 1000px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-top: 5px solid #0056b3; }
+    
+    /* 헤더 스타일 */
+    .header-area { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0056b3; padding-bottom: 15px; margin-bottom: 25px; }
+    .header-area h1 { margin: 0; color: #0056b3; font-size: 26px; font-weight: 800; }
+    
+    /* 고급 검색 폼 스타일 (FDA 510k 스타일) */
+    .search-panel { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px; padding: 20px; margin-bottom: 25px; }
+    .search-panel h3 { margin-top: 0; margin-bottom: 15px; color: #495057; font-size: 16px; }
+    .search-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+    .form-group { display: flex; flex-direction: column; }
+    .form-group label { font-size: 13px; font-weight: bold; margin-bottom: 5px; color: #495057; }
+    .form-group input { padding: 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 14px; }
+    .form-group input:focus { outline: none; border-color: #80bdff; box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25); }
+    
+    .button-group { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; grid-column: span 2; }
+    button { padding: 10px 25px; border: none; border-radius: 4px; font-size: 14px; font-weight: bold; cursor: pointer; transition: background-color 0.2s; }
+    .btn-search { background-color: #0056b3; color: white; }
+    .btn-search:hover { background-color: #004494; }
+    .btn-search:disabled { background-color: #9cb1c5; cursor: not-allowed; }
+    .btn-clear { background-color: #6c757d; color: white; }
+    .btn-clear:hover { background-color: #5a6268; }
+
+    /* 테이블 스타일 */
+    .result-count { font-size: 14px; color: #6c757d; margin-bottom: 10px; font-weight: bold; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { border: 1px solid #dee2e6; padding: 12px; text-align: left; }
+    th { background-color: #e9ecef; color: #495057; position: sticky; top: 0; }
+    tbody tr:hover { background-color: #f1f8ff; cursor: pointer; }
+    
+    .error { color: #dc3545; text-align: center; font-weight: bold; padding: 10px; background: #f8d7da; border-radius: 4px; }
+    .loading { text-align: center; color: #0056b3; font-weight: bold; margin: 20px 0; }
+
+    /* 모달 스타일 */
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+    .modal-content { background: white; padding: 30px; border-radius: 8px; width: 90%; max-width: 700px; max-height: 85vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0056b3; padding-bottom: 15px; margin-bottom: 20px; }
+    .modal-header h2 { margin: 0; color: #0056b3; font-size: 22px; }
+    .close-btn { background: #dc3545; color: white; padding: 8px 15px; }
+    .close-btn:hover { background: #c82333; }
+    
+    .detail-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    .detail-table th { background: #f8f9fa; width: 25%; color: #495057; border: 1px solid #dee2e6; padding: 10px; }
+    .detail-table td { border: 1px solid #dee2e6; padding: 10px; line-height: 1.5; white-space: pre-wrap; }
   </style>
 </head>
 <body>
@@ -35,95 +65,259 @@
     const { useState } = React;
 
     function App() {
-      const [keyword, setKeyword] = useState('');
+      // 다중 검색 조건 상태
+      const [searchParams, setSearchParams] = useState({
+        prdtNm: '', // 제품명
+        bsshNm: '', // 업체명
+        itemNo: ''  // 허가번호
+      });
+      
       const [results, setResults] = useState([]);
       const [isLoading, setIsLoading] = useState(false);
       const [error, setError] = useState(null);
 
-      // ★여기에 발급받으신 일반 인증키(Decoding)를 다시 넣어주세요!★
-      const API_KEY = '발급받은_인증키_입력'; 
+      // 모달 상태
+      const [selectedItem, setSelectedItem] = useState(null);
+      const [details, setDetails] = useState(null);
+      const [isDetailLoading, setIsDetailLoading] = useState(false);
+      const [detailError, setDetailError] = useState(null);
 
+      // 알려주신 공공데이터포털 API 인증키
+      const API_KEY = '098da3673de823360ff33e80761e71e43429732d41fa932b68265be812843028'; 
+
+      // 검색어 입력 핸들러
+      const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setSearchParams(prev => ({ ...prev, [name]: value }));
+      };
+
+      // 폼 초기화
+      const handleClear = () => {
+        setSearchParams({ prdtNm: '', bsshNm: '', itemNo: '' });
+        setResults([]);
+        setError(null);
+      };
+
+      // 1. 의료기기 목록 검색 (API 4: 품목허가 정보 목록조회)
       const handleSearch = async (e) => {
         e.preventDefault();
-        if (!keyword) return alert('검색어를 입력해주세요.');
+        
+        // 최소 하나의 검색 조건이 있는지 확인
+        if (!searchParams.prdtNm && !searchParams.bsshNm && !searchParams.itemNo) {
+          return alert('최소 하나 이상의 검색 조건을 입력해주세요.');
+        }
 
         setIsLoading(true);
         setError(null);
         setResults([]);
 
         try {
-          // 공공데이터포털 원래 주소
-          const targetUrl = `https://apis.data.go.kr/1471000/MdlpPrdlstPrmisnInfoService05/getMdlpPrdlstPrmisnList04?serviceKey=${API_KEY}&pageNo=1&numOfRows=20&type=json&PRDT_NM=${encodeURIComponent(keyword)}`;
+          // 입력된 조건만 쿼리에 추가
+          let query = `serviceKey=${API_KEY}&pageNo=1&numOfRows=50&type=json`;
+          if (searchParams.prdtNm) query += `&PRDT_NM=${encodeURIComponent(searchParams.prdtNm)}`;
+          if (searchParams.bsshNm) query += `&BSSH_NM=${encodeURIComponent(searchParams.bsshNm)}`;
           
-          // CORS 에러 우회를 위한 프록시 주소
+          const targetUrl = `https://apis.data.go.kr/1471000/MdlpPrdlstPrmisnInfoService05/getMdlpPrdlstPrmisnList04?${query}`;
           const url = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
           
           const response = await fetch(url);
           if (!response.ok) throw new Error('데이터를 불러오는데 실패했습니다.');
 
           const data = await response.json();
-          
-          // 하얀 화면을 유발했던 문법(옵셔널 체이닝)을 가장 안전한 방식으로 변경
           let items = [];
           if (data && data.body && data.body.items) {
             items = data.body.items;
           }
           
-          setResults(items);
+          // 허가번호(MEDDEV_ITEM_NO) 조건이 있는 경우 프론트엔드에서 필터링 적용 
+          // (목록 API에 MEDDEV_ITEM_NO 파라미터가 정확히 안 먹히는 경우를 대비한 2중 필터)
+          if (searchParams.itemNo && items.length > 0) {
+             items = items.filter(item => 
+               item.MEDDEV_ITEM_NO && item.MEDDEV_ITEM_NO.includes(searchParams.itemNo.toUpperCase())
+             );
+          }
 
-          if(items.length === 0) {
-            setError('검색 결과가 없습니다.');
-          }
+          setResults(items);
+          if(items.length === 0) setError('조건에 일치하는 검색 결과가 없습니다.');
+
         } catch (err) {
-          if(err.message === 'Failed to fetch') {
-            setError('보안 문제(CORS)로 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
-          } else {
-            setError(err.message);
-          }
+          setError('보안 문제(CORS) 또는 서버 오류로 데이터를 불러오지 못했습니다.');
         } finally {
           setIsLoading(false);
         }
       };
 
+      // 2. 상세 정보 조회 (API 3: 품목정보 상세조회)
+      const handleRowClick = async (item) => {
+        setSelectedItem(item);
+        setIsDetailLoading(true);
+        setDetailError(null);
+        setDetails(null);
+
+        try {
+          const targetUrl = `https://apis.data.go.kr/1471000/MdeqPrdlstInfoService02/getMdeqPrdlstInfoInq02?serviceKey=${API_KEY}&pageNo=1&numOfRows=1&type=json&MEDDEV_ITEM_NO=${encodeURIComponent(item.MEDDEV_ITEM_NO)}`;
+          const url = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
+          
+          const response = await fetch(url);
+          if (!response.ok) throw new Error('상세 데이터를 불러오는데 실패했습니다.');
+
+          const data = await response.json();
+          let detailItems = [];
+          if (data && data.body && data.body.items) {
+            detailItems = data.body.items;
+          }
+          
+          if(detailItems.length > 0) {
+            setDetails(detailItems[0]);
+          } else {
+            setDetailError('상세 품목 정보(API 연동) 내역이 존재하지 않습니다.');
+          }
+        } catch (err) {
+          setDetailError('상세 정보를 불러오지 못했습니다.');
+        } finally {
+          setIsDetailLoading(false);
+        }
+      };
+
+      const closeModal = () => {
+        setSelectedItem(null);
+        setDetails(null);
+      };
+
       return (
         <div className="container">
-          {/* 웹사이트 안의 메인 제목도 맞춰서 변경했습니다 */}
-          <h1>🏥 MFDS_Database</h1>
-          <form className="search-box" onSubmit={handleSearch}>
-            <input 
-              type="text" 
-              value={keyword} 
-              onChange={(e) => setKeyword(e.target.value)} 
-              placeholder="제품명을 입력하세요 (예: 밴드, 주사기)" 
-            />
-            <button type="submit" disabled={isLoading}>
-              {isLoading ? '검색 중...' : '검색하기'}
-            </button>
-          </form>
+          <div className="header-area">
+            <h1>🏛️ MFDS Medical Device Database</h1>
+          </div>
+          
+          {/* 고급 검색 폼 (FDA 510k Search 스타일) */}
+          <div className="search-panel">
+            <h3>Advanced Search</h3>
+            <form onSubmit={handleSearch}>
+              <div className="search-grid">
+                <div className="form-group">
+                  <label>Device Name (제품명)</label>
+                  <input 
+                    type="text" 
+                    name="prdtNm" 
+                    value={searchParams.prdtNm} 
+                    onChange={handleInputChange} 
+                    placeholder="ex) 주사기, 밴드" 
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Applicant/Company (업체명)</label>
+                  <input 
+                    type="text" 
+                    name="bsshNm" 
+                    value={searchParams.bsshNm} 
+                    onChange={handleInputChange} 
+                    placeholder="ex) 와이브레인, 삼성메디슨" 
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Approval Number (허가번호)</label>
+                  <input 
+                    type="text" 
+                    name="itemNo" 
+                    value={searchParams.itemNo} 
+                    onChange={handleInputChange} 
+                    placeholder="ex) 수허, 제허 등" 
+                  />
+                </div>
+                
+                <div className="button-group">
+                  <button type="button" className="btn-clear" onClick={handleClear}>Clear</button>
+                  <button type="submit" className="btn-search" disabled={isLoading}>
+                    {isLoading ? 'Searching...' : 'Search'}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
 
           {error && <p className="error">{error}</p>}
+          {isLoading && <p className="loading">데이터를 조회하고 있습니다...</p>}
 
-          {results.length > 0 && (
-            <table>
-              <thead>
-                <tr>
-                  <th>품목명(제품명)</th>
-                  <th>업체명</th>
-                  <th>허가번호</th>
-                  <th>등급</th>
-                </tr>
-              </thead>
-              <tbody>
-                {results.map((item, index) => (
-                  <tr key={index}>
-                    <td>{item.PRDT_NM}</td>
-                    <td>{item.BSSH_NM}</td>
-                    <td>{item.MEDDEV_ITEM_NO}</td>
-                    <td>{item.GRADE}</td>
+          {/* 검색 결과 리스트 */}
+          {!isLoading && results.length > 0 && (
+            <div>
+              <div className="result-count">Total Results: {results.length} records found.</div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Device Name (제품명)</th>
+                    <th>Applicant (업체명)</th>
+                    <th>Approval No. (허가번호)</th>
+                    <th>Class (등급)</th>
+                    <th>Approval Date (허가일)</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {results.map((item, index) => (
+                    <tr key={index} onClick={() => handleRowClick(item)}>
+                      <td>{item.PRDT_NM}</td>
+                      <td>{item.BSSH_NM}</td>
+                      <td>{item.MEDDEV_ITEM_NO}</td>
+                      <td>{item.GRADE}</td>
+                      <td>{item.PRMISN_YMD}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* 상세 정보 모달 */}
+          {selectedItem && (
+            <div className="modal-overlay" onClick={closeModal}>
+              <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                <div className="modal-header">
+                  <h2>Device Details</h2>
+                  <button className="close-btn" onClick={closeModal}>Close</button>
+                </div>
+
+                {isDetailLoading && <p className="loading">상세 정보를 불러오는 중입니다...</p>}
+                {detailError && <p className="error">{detailError}</p>}
+                
+                <table className="detail-table">
+                  <tbody>
+                    <tr>
+                      <th>Device Name<br/>(제품명)</th>
+                      <td>{details?.PRDT_NM || selectedItem.PRDT_NM}</td>
+                    </tr>
+                    <tr>
+                      <th>Applicant<br/>(제조/수입업체)</th>
+                      <td>{details?.BSSH_NM || selectedItem.BSSH_NM}</td>
+                    </tr>
+                    <tr>
+                      <th>Approval No.<br/>(품목허가번호)</th>
+                      <td>{details?.MEDDEV_ITEM_NO || selectedItem.MEDDEV_ITEM_NO}</td>
+                    </tr>
+                    <tr>
+                      <th>Approval Date<br/>(허가일자)</th>
+                      <td>{details?.PRMISN_YMD || selectedItem.PRMISN_YMD}</td>
+                    </tr>
+                    {details && (
+                      <>
+                        <tr>
+                          <th>Intended Use<br/>(사용 목적)</th>
+                          <td>{details.USE_PURPS || 'N/A'}</td>
+                        </tr>
+                        <tr>
+                          <th>Instructions<br/>(사용 방법)</th>
+                          <td>{details.USE_MTHD || 'N/A'}</td>
+                        </tr>
+                        <tr>
+                          <th>Warnings<br/>(사용 시 주의사항)</th>
+                          <td>{details.USE_ATNT_MATR || 'N/A'}</td>
+                        </tr>
+                      </>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           )}
         </div>
       );
