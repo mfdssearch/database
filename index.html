@@ -10,51 +10,47 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
   <style>
-    body { font-family: 'Arial', 'Malgun Gothic', sans-serif; background-color: #f0f4f8; padding: 20px; color: #333; }
-    .container { max-width: 1000px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-top: 5px solid #0056b3; }
+    body { font-family: 'Arial', 'Malgun Gothic', sans-serif; background-color: #f4f7f6; padding: 20px; color: #333; margin: 0; }
+    .container { max-width: 1100px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-top: 5px solid #2c3e50; }
     
-    /* 헤더 스타일 */
-    .header-area { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0056b3; padding-bottom: 15px; margin-bottom: 25px; }
-    .header-area h1 { margin: 0; color: #0056b3; font-size: 26px; font-weight: 800; }
+    .header-area { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2c3e50; padding-bottom: 15px; margin-bottom: 25px; }
+    .header-area h1 { margin: 0; color: #2c3e50; font-size: 24px; font-weight: 800; }
     
-    /* 고급 검색 폼 스타일 (FDA 510k 스타일) */
-    .search-panel { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px; padding: 20px; margin-bottom: 25px; }
-    .search-panel h3 { margin-top: 0; margin-bottom: 15px; color: #495057; font-size: 16px; }
-    .search-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-    .form-group { display: flex; flex-direction: column; }
-    .form-group label { font-size: 13px; font-weight: bold; margin-bottom: 5px; color: #495057; }
-    .form-group input { padding: 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 14px; }
-    .form-group input:focus { outline: none; border-color: #80bdff; box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25); }
-    
-    .button-group { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; grid-column: span 2; }
-    button { padding: 10px 25px; border: none; border-radius: 4px; font-size: 14px; font-weight: bold; cursor: pointer; transition: background-color 0.2s; }
-    .btn-search { background-color: #0056b3; color: white; }
-    .btn-search:hover { background-color: #004494; }
-    .btn-search:disabled { background-color: #9cb1c5; cursor: not-allowed; }
-    .btn-clear { background-color: #6c757d; color: white; }
-    .btn-clear:hover { background-color: #5a6268; }
+    /* 통합 검색창 스타일 */
+    .search-panel { background: #ecf0f1; border-radius: 8px; padding: 20px; margin-bottom: 30px; display: flex; gap: 10px; align-items: center; }
+    .search-panel select { padding: 12px; border: 1px solid #bdc3c7; border-radius: 4px; font-size: 15px; background: white; font-weight: bold; color: #2c3e50; }
+    .search-panel input { flex: 1; padding: 12px; border: 1px solid #bdc3c7; border-radius: 4px; font-size: 15px; }
+    .search-panel button { padding: 12px 30px; background-color: #2980b9; color: white; border: none; border-radius: 4px; font-size: 15px; font-weight: bold; cursor: pointer; transition: background-color 0.2s; }
+    .search-panel button:hover { background-color: #1c5980; }
+    .search-panel button:disabled { background-color: #95a5a6; cursor: not-allowed; }
 
-    /* 테이블 스타일 */
-    .result-count { font-size: 14px; color: #6c757d; margin-bottom: 10px; font-weight: bold; }
-    table { width: 100%; border-collapse: collapse; font-size: 14px; }
-    th, td { border: 1px solid #dee2e6; padding: 12px; text-align: left; }
-    th { background-color: #e9ecef; color: #495057; position: sticky; top: 0; }
-    tbody tr:hover { background-color: #f1f8ff; cursor: pointer; }
+    /* 결과 섹션 분리 스타일 */
+    .section-title { font-size: 18px; color: #2980b9; border-bottom: 2px solid #3498db; padding-bottom: 8px; margin-top: 30px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: flex-end; }
+    .result-count { font-size: 14px; color: #7f8c8d; font-weight: normal; }
     
-    .error { color: #dc3545; text-align: center; font-weight: bold; padding: 10px; background: #f8d7da; border-radius: 4px; }
-    .loading { text-align: center; color: #0056b3; font-weight: bold; margin: 20px 0; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 20px; }
+    th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+    th { background-color: #f8f9fa; color: #2c3e50; position: sticky; top: 0; }
+    tbody tr:hover { background-color: #eaf2f8; cursor: pointer; }
+    
+    .error { color: #e74c3c; text-align: center; font-weight: bold; padding: 15px; background: #fadbd8; border-radius: 4px; margin-bottom: 20px; }
+    .loading { text-align: center; color: #2980b9; font-weight: bold; margin: 40px 0; font-size: 16px; }
+    .no-data { text-align: center; padding: 30px; color: #7f8c8d; background: #f9f9f9; border: 1px dashed #ccc; border-radius: 4px; }
 
     /* 모달 스타일 */
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; }
-    .modal-content { background: white; padding: 30px; border-radius: 8px; width: 90%; max-width: 700px; max-height: 85vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
-    .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0056b3; padding-bottom: 15px; margin-bottom: 20px; }
-    .modal-header h2 { margin: 0; color: #0056b3; font-size: 22px; }
-    .close-btn { background: #dc3545; color: white; padding: 8px 15px; }
-    .close-btn:hover { background: #c82333; }
+    .modal-content { background: white; padding: 25px; border-radius: 8px; width: 90%; max-width: 800px; max-height: 85vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2980b9; padding-bottom: 15px; margin-bottom: 20px; }
+    .modal-header h2 { margin: 0; color: #2980b9; font-size: 20px; }
+    .badge { background: #e67e22; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; margin-left: 10px; vertical-align: middle; }
+    .badge.device { background: #27ae60; }
     
-    .detail-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-    .detail-table th { background: #f8f9fa; width: 25%; color: #495057; border: 1px solid #dee2e6; padding: 10px; }
-    .detail-table td { border: 1px solid #dee2e6; padding: 10px; line-height: 1.5; white-space: pre-wrap; }
+    .close-btn { background: #e74c3c; color: white; padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; }
+    .close-btn:hover { background: #c0392b; }
+    
+    .detail-table { width: 100%; border-collapse: collapse; }
+    .detail-table th { background: #f2f6f8; width: 25%; color: #34495e; border: 1px solid #ddd; padding: 12px; }
+    .detail-table td { border: 1px solid #ddd; padding: 12px; line-height: 1.6; white-space: pre-wrap; }
   </style>
 </head>
 <body>
@@ -65,112 +61,111 @@
     const { useState } = React;
 
     function App() {
-      // 다중 검색 조건 상태
-      const [searchParams, setSearchParams] = useState({
-        prdtNm: '', // 제품명
-        bsshNm: '', // 업체명
-        itemNo: ''  // 허가번호
-      });
+      const [searchType, setSearchType] = useState('PRDT_NM'); // 검색 조건 (제품명 or 업체명)
+      const [keyword, setKeyword] = useState('');
       
-      const [results, setResults] = useState([]);
+      // 검색 결과 상태
+      const [deviceResults, setDeviceResults] = useState([]); // 허가 기기 목록 (API 4)
+      const [trialResults, setTrialResults] = useState([]);   // 임상 시험 목록 (API 2)
       const [isLoading, setIsLoading] = useState(false);
       const [error, setError] = useState(null);
+      const [hasSearched, setHasSearched] = useState(false);
 
       // 모달 상태
+      const [modalType, setModalType] = useState(null); // 'device' or 'trial'
       const [selectedItem, setSelectedItem] = useState(null);
       const [details, setDetails] = useState(null);
       const [isDetailLoading, setIsDetailLoading] = useState(false);
       const [detailError, setDetailError] = useState(null);
 
-      // 알려주신 공공데이터포털 API 인증키
+      // 공통 API 키
       const API_KEY = '098da3673de823360ff33e80761e71e43429732d41fa932b68265be812843028'; 
 
-      // 검색어 입력 핸들러
-      const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setSearchParams(prev => ({ ...prev, [name]: value }));
-      };
-
-      // 폼 초기화
-      const handleClear = () => {
-        setSearchParams({ prdtNm: '', bsshNm: '', itemNo: '' });
-        setResults([]);
-        setError(null);
-      };
-
-      // 1. 의료기기 목록 검색 (API 4: 품목허가 정보 목록조회)
+      // ==========================================
+      // 통합 검색 실행 (API 4, API 2 동시 호출)
+      // ==========================================
       const handleSearch = async (e) => {
         e.preventDefault();
-        
-        // 최소 하나의 검색 조건이 있는지 확인
-        if (!searchParams.prdtNm && !searchParams.bsshNm && !searchParams.itemNo) {
-          return alert('최소 하나 이상의 검색 조건을 입력해주세요.');
-        }
+        if (!keyword.trim()) return alert('검색어를 입력해주세요.');
 
         setIsLoading(true);
         setError(null);
-        setResults([]);
+        setDeviceResults([]);
+        setTrialResults([]);
+        setHasSearched(true);
 
         try {
-          // 입력된 조건만 쿼리에 추가
-          let query = `serviceKey=${API_KEY}&pageNo=1&numOfRows=50&type=json`;
-          if (searchParams.prdtNm) query += `&PRDT_NM=${encodeURIComponent(searchParams.prdtNm)}`;
-          if (searchParams.bsshNm) query += `&BSSH_NM=${encodeURIComponent(searchParams.bsshNm)}`;
-          
-          const targetUrl = `https://apis.data.go.kr/1471000/MdlpPrdlstPrmisnInfoService05/getMdlpPrdlstPrmisnList04?${query}`;
-          const url = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
-          
-          const response = await fetch(url);
-          if (!response.ok) throw new Error('데이터를 불러오는데 실패했습니다.');
+          // 1. 시판 허가기기 검색 URL (API 4)
+          // 업체명 검색일 경우 BSSH_NM, 제품명 검색일 경우 PRDT_NM
+          const deviceParam = searchType === 'BSSH_NM' ? `BSSH_NM=${encodeURIComponent(keyword)}` : `PRDT_NM=${encodeURIComponent(keyword)}`;
+          const deviceTargetUrl = `https://apis.data.go.kr/1471000/MdlpPrdlstPrmisnInfoService05/getMdlpPrdlstPrmisnList04?serviceKey=${API_KEY}&pageNo=1&numOfRows=30&type=json&${deviceParam}`;
+          const deviceUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(deviceTargetUrl)}`;
 
-          const data = await response.json();
-          let items = [];
-          if (data && data.body && data.body.items) {
-            items = data.body.items;
-          }
-          
-          // 허가번호(MEDDEV_ITEM_NO) 조건이 있는 경우 프론트엔드에서 필터링 적용 
-          // (목록 API에 MEDDEV_ITEM_NO 파라미터가 정확히 안 먹히는 경우를 대비한 2중 필터)
-          if (searchParams.itemNo && items.length > 0) {
-             items = items.filter(item => 
-               item.MEDDEV_ITEM_NO && item.MEDDEV_ITEM_NO.includes(searchParams.itemNo.toUpperCase())
-             );
+          // 2. 임상시험 검색 URL (API 2)
+          // 임상시험 API에서는 업체명 파라미터가 MNFT_IPRT_BSSH_NM(제조수입업소명) 임
+          const trialParam = searchType === 'BSSH_NM' ? `MNFT_IPRT_BSSH_NM=${encodeURIComponent(keyword)}` : `PRDT_NM=${encodeURIComponent(keyword)}`;
+          const trialTargetUrl = `https://apis.data.go.kr/1471000/MdeqClncTestPlanAprvAplyListService/getMdeqClncTestPlanAprvAplyListInq?serviceKey=${API_KEY}&pageNo=1&numOfRows=30&type=json&${trialParam}`;
+          const trialUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(trialTargetUrl)}`;
+
+          // 두 API를 동시에 호출하여 속도 최적화 (Promise.all)
+          const [deviceRes, trialRes] = await Promise.all([
+            fetch(deviceUrl).catch(e => ({ ok: false })), 
+            fetch(trialUrl).catch(e => ({ ok: false }))
+          ]);
+
+          // 허가 기기 데이터 파싱
+          if (deviceRes.ok) {
+            const deviceData = await deviceRes.json();
+            if (deviceData?.body?.items) setDeviceResults(deviceData.body.items);
           }
 
-          setResults(items);
-          if(items.length === 0) setError('조건에 일치하는 검색 결과가 없습니다.');
+          // 임상 시험 데이터 파싱
+          if (trialRes.ok) {
+            const trialData = await trialRes.json();
+            if (trialData?.body?.items) setTrialResults(trialData.body.items);
+          }
+
+          if ((!deviceRes.ok && !trialRes.ok) || (!deviceResults.length && !trialResults.length && deviceRes.ok && trialRes.ok)) {
+            // 에러처리는 아래 렌더링 부분에서 results 길이로 체크함
+          }
 
         } catch (err) {
-          setError('보안 문제(CORS) 또는 서버 오류로 데이터를 불러오지 못했습니다.');
+          setError('서버 통신 중 오류가 발생했습니다. (CORS 문제 등)');
         } finally {
           setIsLoading(false);
         }
       };
 
-      // 2. 상세 정보 조회 (API 3: 품목정보 상세조회)
-      const handleRowClick = async (item) => {
+      // ==========================================
+      // 상세 정보 조회 (모달 클릭 이벤트)
+      // ==========================================
+      const handleRowClick = async (type, item) => {
+        setModalType(type);
         setSelectedItem(item);
         setIsDetailLoading(true);
         setDetailError(null);
         setDetails(null);
 
         try {
-          const targetUrl = `https://apis.data.go.kr/1471000/MdeqPrdlstInfoService02/getMdeqPrdlstInfoInq02?serviceKey=${API_KEY}&pageNo=1&numOfRows=1&type=json&MEDDEV_ITEM_NO=${encodeURIComponent(item.MEDDEV_ITEM_NO)}`;
-          const url = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
+          let targetUrl = '';
           
+          if (type === 'device') {
+            // 허가 기기 상세조회 (API 3)
+            targetUrl = `https://apis.data.go.kr/1471000/MdeqPrdlstInfoService02/getMdeqPrdlstInfoInq02?serviceKey=${API_KEY}&pageNo=1&numOfRows=1&type=json&MEDDEV_ITEM_NO=${encodeURIComponent(item.MEDDEV_ITEM_NO)}`;
+          } else {
+            // 임상 시험 상세조회 (API 1)
+            targetUrl = `https://apis.data.go.kr/1471000/MdeqClncTestPlanAprvAplyDtlService01/getMdeqClncTestPlanAprvAplyDtlInq01?serviceKey=${API_KEY}&pageNo=1&numOfRows=1&type=json&CLST_PLAN_APRV_NO=${encodeURIComponent(item.CLST_PLAN_APRV_NO)}`;
+          }
+
+          const url = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
           const response = await fetch(url);
           if (!response.ok) throw new Error('상세 데이터를 불러오는데 실패했습니다.');
 
           const data = await response.json();
-          let detailItems = [];
-          if (data && data.body && data.body.items) {
-            detailItems = data.body.items;
-          }
-          
-          if(detailItems.length > 0) {
-            setDetails(detailItems[0]);
+          if (data && data.body && data.body.items && data.body.items.length > 0) {
+            setDetails(data.body.items[0]);
           } else {
-            setDetailError('상세 품목 정보(API 연동) 내역이 존재하지 않습니다.');
+            setDetailError('상세 정보가 등록되어 있지 않습니다.');
           }
         } catch (err) {
           setDetailError('상세 정보를 불러오지 못했습니다.');
@@ -180,6 +175,7 @@
       };
 
       const closeModal = () => {
+        setModalType(null);
         setSelectedItem(null);
         setDetails(null);
       };
@@ -187,135 +183,143 @@
       return (
         <div className="container">
           <div className="header-area">
-            <h1>🏛️ MFDS Medical Device Database</h1>
+            <h1>⚕️ MFDS 통합 의료기기 Database</h1>
           </div>
           
-          {/* 고급 검색 폼 (FDA 510k Search 스타일) */}
-          <div className="search-panel">
-            <h3>Advanced Search</h3>
-            <form onSubmit={handleSearch}>
-              <div className="search-grid">
-                <div className="form-group">
-                  <label>Device Name (제품명)</label>
-                  <input 
-                    type="text" 
-                    name="prdtNm" 
-                    value={searchParams.prdtNm} 
-                    onChange={handleInputChange} 
-                    placeholder="ex) 주사기, 밴드" 
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Applicant/Company (업체명)</label>
-                  <input 
-                    type="text" 
-                    name="bsshNm" 
-                    value={searchParams.bsshNm} 
-                    onChange={handleInputChange} 
-                    placeholder="ex) 와이브레인, 삼성메디슨" 
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Approval Number (허가번호)</label>
-                  <input 
-                    type="text" 
-                    name="itemNo" 
-                    value={searchParams.itemNo} 
-                    onChange={handleInputChange} 
-                    placeholder="ex) 수허, 제허 등" 
-                  />
-                </div>
-                
-                <div className="button-group">
-                  <button type="button" className="btn-clear" onClick={handleClear}>Clear</button>
-                  <button type="submit" className="btn-search" disabled={isLoading}>
-                    {isLoading ? 'Searching...' : 'Search'}
-                  </button>
-                </div>
-              </div>
-            </form>
-          </div>
+          {/* 1. 통합 검색창 */}
+          <form className="search-panel" onSubmit={handleSearch}>
+            <select value={searchType} onChange={(e) => setSearchType(e.target.value)}>
+              <option value="PRDT_NM">제품명(모델명)으로 검색</option>
+              <option value="BSSH_NM">업체명으로 검색</option>
+            </select>
+            <input 
+              type="text" 
+              value={keyword} 
+              onChange={(e) => setKeyword(e.target.value)} 
+              placeholder="검색어를 입력하세요 (예: 삼성, 주사기 등)" 
+            />
+            <button type="submit" disabled={isLoading}>
+              {isLoading ? '통합 검색 중...' : '통합 검색'}
+            </button>
+          </form>
 
           {error && <p className="error">{error}</p>}
-          {isLoading && <p className="loading">데이터를 조회하고 있습니다...</p>}
+          {isLoading && <p className="loading">식약처 데이터베이스 4곳을 동시 검색 중입니다...</p>}
 
-          {/* 검색 결과 리스트 */}
-          {!isLoading && results.length > 0 && (
+          {/* 검색을 한 상태이고 로딩이 끝났을 때 결과 표시 */}
+          {!isLoading && hasSearched && !error && (
             <div>
-              <div className="result-count">Total Results: {results.length} records found.</div>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Device Name (제품명)</th>
-                    <th>Applicant (업체명)</th>
-                    <th>Approval No. (허가번호)</th>
-                    <th>Class (등급)</th>
-                    <th>Approval Date (허가일)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {results.map((item, index) => (
-                    <tr key={index} onClick={() => handleRowClick(item)}>
-                      <td>{item.PRDT_NM}</td>
-                      <td>{item.BSSH_NM}</td>
-                      <td>{item.MEDDEV_ITEM_NO}</td>
-                      <td>{item.GRADE}</td>
-                      <td>{item.PRMISN_YMD}</td>
+              {/* 2-1. 시판 허가 기기 결과 (API 4) */}
+              <div className="section-title">
+                <span>🟢 1. 시판 허가된 기기 목록</span>
+                <span className="result-count">총 {deviceResults.length}건</span>
+              </div>
+              {deviceResults.length > 0 ? (
+                <table>
+                  <thead>
+                    <tr>
+                      <th>품목명(제품명)</th>
+                      <th>업체명</th>
+                      <th>허가번호</th>
+                      <th>등급</th>
+                      <th>허가일자</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {deviceResults.map((item, index) => (
+                      <tr key={`dev-${index}`} onClick={() => handleRowClick('device', item)}>
+                        <td>{item.PRDT_NM}</td>
+                        <td>{item.BSSH_NM}</td>
+                        <td>{item.MEDDEV_ITEM_NO}</td>
+                        <td>{item.GRADE}</td>
+                        <td>{item.PRMISN_YMD}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="no-data">시판 허가된 기기 내역이 없습니다.</div>
+              )}
+
+              {/* 2-2. 임상시험 승인 결과 (API 2) */}
+              <div className="section-title">
+                <span>🟠 2. 임상시험 진행/승인 현황</span>
+                <span className="result-count">총 {trialResults.length}건</span>
+              </div>
+              {trialResults.length > 0 ? (
+                <table>
+                  <thead>
+                    <tr>
+                      <th>임상시험 승인번호</th>
+                      <th>임상시험 구분</th>
+                      <th>제품명</th>
+                      <th>신청 업체명</th>
+                      <th>승인일자</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {trialResults.map((item, index) => (
+                      <tr key={`tri-${index}`} onClick={() => handleRowClick('trial', item)}>
+                        <td>{item.CLST_PLAN_APRV_NO}</td>
+                        <td>{item.CLINIC_EXAM_CODE_NAME || item.CLST_DIVS_NM || '-'}</td>
+                        <td>{item.PRDT_NM}</td>
+                        <td>{item.APLY_BSSH_NM}</td>
+                        <td>{item.APPROVAL_DATE}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="no-data">관련된 임상시험 내역이 없습니다.</div>
+              )}
             </div>
           )}
 
-          {/* 상세 정보 모달 */}
+          {/* 3. 공통 모달 (상세 정보) */}
           {selectedItem && (
             <div className="modal-overlay" onClick={closeModal}>
               <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
-                  <h2>Device Details</h2>
-                  <button className="close-btn" onClick={closeModal}>Close</button>
+                  <h2>
+                    {modalType === 'device' ? '기기 상세 정보 (API 3)' : '임상시험 상세 정보 (API 1)'}
+                    <span className={`badge ${modalType === 'device' ? 'device' : ''}`}>
+                      {modalType === 'device' ? '시판 허가' : '임상 진행'}
+                    </span>
+                  </h2>
+                  <button className="close-btn" onClick={closeModal}>닫기</button>
                 </div>
 
-                {isDetailLoading && <p className="loading">상세 정보를 불러오는 중입니다...</p>}
+                {isDetailLoading && <p className="loading">상세 데이터 연동 중입니다...</p>}
                 {detailError && <p className="error">{detailError}</p>}
                 
-                <table className="detail-table">
-                  <tbody>
-                    <tr>
-                      <th>Device Name<br/>(제품명)</th>
-                      <td>{details?.PRDT_NM || selectedItem.PRDT_NM}</td>
-                    </tr>
-                    <tr>
-                      <th>Applicant<br/>(제조/수입업체)</th>
-                      <td>{details?.BSSH_NM || selectedItem.BSSH_NM}</td>
-                    </tr>
-                    <tr>
-                      <th>Approval No.<br/>(품목허가번호)</th>
-                      <td>{details?.MEDDEV_ITEM_NO || selectedItem.MEDDEV_ITEM_NO}</td>
-                    </tr>
-                    <tr>
-                      <th>Approval Date<br/>(허가일자)</th>
-                      <td>{details?.PRMISN_YMD || selectedItem.PRMISN_YMD}</td>
-                    </tr>
-                    {details && (
-                      <>
-                        <tr>
-                          <th>Intended Use<br/>(사용 목적)</th>
-                          <td>{details.USE_PURPS || 'N/A'}</td>
-                        </tr>
-                        <tr>
-                          <th>Instructions<br/>(사용 방법)</th>
-                          <td>{details.USE_MTHD || 'N/A'}</td>
-                        </tr>
-                        <tr>
-                          <th>Warnings<br/>(사용 시 주의사항)</th>
-                          <td>{details.USE_ATNT_MATR || 'N/A'}</td>
-                        </tr>
-                      </>
-                    )}
-                  </tbody>
-                </table>
+                {/* 시판 기기 상세 (API 3 포맷) */}
+                {!isDetailLoading && details && modalType === 'device' && (
+                  <table className="detail-table">
+                    <tbody>
+                      <tr><th>제품명</th><td>{details.PRDT_NM || selectedItem.PRDT_NM}</td></tr>
+                      <tr><th>제조업체</th><td>{details.BSSH_NM || selectedItem.BSSH_NM}</td></tr>
+                      <tr><th>허가번호</th><td>{details.MEDDEV_ITEM_NO || selectedItem.MEDDEV_ITEM_NO}</td></tr>
+                      <tr><th>사용 목적</th><td>{details.USE_PURPS || '등록 내용 없음'}</td></tr>
+                      <tr><th>사용 방법</th><td>{details.USE_MTHD || '등록 내용 없음'}</td></tr>
+                      <tr><th>주의사항</th><td>{details.USE_ATNT_MATR || '등록 내용 없음'}</td></tr>
+                      <tr><th>유효기간</th><td>{details.VLD_PRD || '해당 없음'}</td></tr>
+                    </tbody>
+                  </table>
+                )}
+
+                {/* 임상 시험 상세 (API 1 포맷) */}
+                {!isDetailLoading && details && modalType === 'trial' && (
+                  <table className="detail-table">
+                    <tbody>
+                      <tr><th>임상시험 제목</th><td><strong>{details.CLNC_TEST_TITLE || '제목 없음'}</strong></td></tr>
+                      <tr><th>임상 승인번호</th><td>{details.CLST_PLAN_APRV_NO || selectedItem.CLST_PLAN_APRV_NO}</td></tr>
+                      <tr><th>대상 제품명</th><td>{details.PRDT_NM || selectedItem.PRDT_NM}</td></tr>
+                      <tr><th>신청 업체명</th><td>{details.APLY_BSSH_NM || selectedItem.APLY_BSSH_NM}</td></tr>
+                      <tr><th>임상시험 상세명</th><td>{details.CLNC_TEST_DTL_NM || '-'}</td></tr>
+                      <tr><th>의료기기 분류번호</th><td>{details.MDEQ_CLSF_NO || '-'}</td></tr>
+                    </tbody>
+                  </table>
+                )}
               </div>
             </div>
           )}
