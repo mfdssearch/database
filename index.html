@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MFDS_Database</title>
+  <title>MFDS 통합 의료기기 Database</title>
   
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -33,7 +33,7 @@
     
     table { width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 20px; }
     th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-    th { background-color: #f8f9fa; color: #2c3e50; position: sticky; top: 0; }
+    th { background-color: #f8f9fa; color: #2c3e50; position: sticky; top: 0; z-index: 10; }
     tbody tr:hover { background-color: #eaf2f8; cursor: pointer; }
     
     .error { color: #e74c3c; text-align: center; font-weight: bold; padding: 15px; background: #fadbd8; border-radius: 4px; margin-bottom: 20px; }
@@ -47,7 +47,7 @@
     .badge { background: #e67e22; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; margin-left: 10px; vertical-align: middle; }
     .badge.device { background: #27ae60; }
     
-    .close-btn { background: #e74c3c; color: white; padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; }
+    .close-btn { background: #e74c3c; color: white; padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
     .close-btn:hover { background: #c0392b; }
     
     .detail-table { width: 100%; border-collapse: collapse; }
@@ -65,6 +65,7 @@
     const { useState } = React;
 
     function App() {
+      // 1. 상태 관리 (State)
       const [prdtNm, setPrdtNm] = useState(''); 
       const [bsshNm, setBsshNm] = useState(''); 
       
@@ -82,6 +83,13 @@
 
       const API_KEY = '098da3673de823360ff33e80761e71e43429732d41fa932b68265be812843028'; 
 
+      // 식약처 API 응답(단일 객체 or 배열)을 항상 배열로 변환하는 안전 헬퍼 함수
+      const normalizeItems = (items) => {
+        if (!items) return [];
+        return Array.isArray(items) ? items : [items];
+      };
+
+      // 2. 통합 검색 실행 (목록 조회)
       const handleSearch = async (e) => {
         e.preventDefault();
         
@@ -96,11 +104,13 @@
         setHasSearched(true);
 
         try {
-          let deviceQuery = `serviceKey=${API_KEY}&pageNo=1&numOfRows=30&type=json`;
+          // [API 4-1] 시판 허가 기기 목록 쿼리 생성
+          let deviceQuery = `serviceKey=${API_KEY}&pageNo=1&numOfRows=50&type=json`;
           if (prdtNm.trim()) deviceQuery += `&PRDT_NM=${encodeURIComponent(prdtNm.trim())}`;
           if (bsshNm.trim()) deviceQuery += `&ENTP_NM=${encodeURIComponent(bsshNm.trim())}`; 
 
-          let trialQuery = `serviceKey=${API_KEY}&pageNo=1&numOfRows=30&type=json`;
+          // [API 2] 임상시험 진행 현황 쿼리 생성
+          let trialQuery = `serviceKey=${API_KEY}&pageNo=1&numOfRows=50&type=json`;
           if (prdtNm.trim()) trialQuery += `&PRDT_NM=${encodeURIComponent(prdtNm.trim())}`;
           if (bsshNm.trim()) trialQuery += `&MNFT_IPRT_BSSH_NM=${encodeURIComponent(bsshNm.trim())}`;
 
@@ -110,19 +120,20 @@
           const deviceUrl = `https://corsproxy.io/?${encodeURIComponent(deviceTargetUrl)}`;
           const trialUrl = `https://corsproxy.io/?${encodeURIComponent(trialTargetUrl)}`;
 
+          // 두 API 동시 호출
           const [deviceRes, trialRes] = await Promise.all([
-            fetch(deviceUrl).catch(e => ({ ok: false })), 
-            fetch(trialUrl).catch(e => ({ ok: false }))
+            fetch(deviceUrl).catch(() => ({ ok: false })), 
+            fetch(trialUrl).catch(() => ({ ok: false }))
           ]);
 
           if (deviceRes.ok) {
             const deviceData = await deviceRes.json();
-            if (deviceData?.body?.items) setDeviceResults(deviceData.body.items);
+            setDeviceResults(normalizeItems(deviceData?.body?.items));
           }
 
           if (trialRes.ok) {
             const trialData = await trialRes.json();
-            if (trialData?.body?.items) setTrialResults(trialData.body.items);
+            setTrialResults(normalizeItems(trialData?.body?.items));
           }
 
           if (!deviceRes.ok && !trialRes.ok) {
@@ -130,13 +141,14 @@
           }
 
         } catch (err) {
-          console.error(err);
-          setError('보안 문제(CORS) 또는 서버 오류로 데이터를 불러오지 못했습니다.');
+          console.error('검색 오류:', err);
+          setError('네트워크 지연 또는 서버 오류로 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
         } finally {
           setIsLoading(false);
         }
       };
 
+      // 3. 상세 정보 조회 (모달 클릭)
       const handleRowClick = async (type, item) => {
         setModalType(type);
         setSelectedItem(item);
@@ -146,16 +158,13 @@
 
         try {
           if (type === 'device') {
-            // [핵심 변경] 기기 클릭 시 2개의 상세정보 API를 동시에 호출하여 합칩니다.
-            
-            // 1. 의료기기 품목정보 상세 (API 3)
+            // [API 3] & [API 4-2] 시판 기기 상세 동시 호출
             const infoTargetUrl = `https://apis.data.go.kr/1471000/MdeqPrdlstInfoService02/getMdeqPrdlstInfoInq02?serviceKey=${API_KEY}&pageNo=1&numOfRows=1&type=json&MEDDEV_ITEM_NO=${encodeURIComponent(item.MEDDEV_ITEM_NO)}`;
-            // 2. 의료기기 품목허가 상세 (API 4-2)
             const permTargetUrl = `https://apis.data.go.kr/1471000/MdlpPrdlstPrmisnInfoService05/getMdlpPrdlstPrmisnItem04?serviceKey=${API_KEY}&pageNo=1&numOfRows=1&type=json&MEDDEV_ITEM_NO=${encodeURIComponent(item.MEDDEV_ITEM_NO)}`;
             
             const [infoRes, permRes] = await Promise.all([
-              fetch(`https://corsproxy.io/?${encodeURIComponent(infoTargetUrl)}`).catch(e => ({ ok: false })),
-              fetch(`https://corsproxy.io/?${encodeURIComponent(permTargetUrl)}`).catch(e => ({ ok: false }))
+              fetch(`https://corsproxy.io/?${encodeURIComponent(infoTargetUrl)}`).catch(() => ({ ok: false })),
+              fetch(`https://corsproxy.io/?${encodeURIComponent(permTargetUrl)}`).catch(() => ({ ok: false }))
             ]);
 
             let infoData = null;
@@ -163,36 +172,38 @@
 
             if (infoRes.ok) {
               const d1 = await infoRes.json();
-              if (d1?.body?.items?.length > 0) infoData = d1.body.items[0];
+              const items = normalizeItems(d1?.body?.items);
+              if (items.length > 0) infoData = items[0];
             }
             if (permRes.ok) {
               const d2 = await permRes.json();
-              if (d2?.body?.items?.length > 0) permData = d2.body.items[0];
+              const items = normalizeItems(d2?.body?.items);
+              if (items.length > 0) permData = items[0];
             }
 
             if (infoData || permData) {
-              // 두 API 결과를 객체로 묶어서 저장합니다.
               setDetails({ info: infoData, perm: permData });
             } else {
-              setDetailError('상세 정보가 등록되어 있지 않습니다.');
+              setDetailError('식약처 데이터베이스에 등록된 상세 정보가 없습니다.');
             }
 
           } else {
-            // 임상시험 상세조회 로직
+            // [API 1] 임상시험 상세 단일 호출
             const targetUrl = `https://apis.data.go.kr/1471000/MdeqClncTestPlanAprvAplyDtlService01/getMdeqClncTestPlanAprvAplyDtlInq01?serviceKey=${API_KEY}&pageNo=1&numOfRows=1&type=json&CLST_PLAN_APRV_NO=${encodeURIComponent(item.CLST_PLAN_APRV_NO)}`;
             const response = await fetch(`https://corsproxy.io/?${encodeURIComponent(targetUrl)}`);
             if (!response.ok) throw new Error('상세 데이터를 불러오는데 실패했습니다.');
             
             const data = await response.json();
-            if (data?.body?.items?.length > 0) {
-              setDetails(data.body.items[0]);
+            const items = normalizeItems(data?.body?.items);
+            if (items.length > 0) {
+              setDetails(items[0]);
             } else {
-              setDetailError('상세 정보가 등록되어 있지 않습니다.');
+              setDetailError('식약처 데이터베이스에 등록된 상세 정보가 없습니다.');
             }
           }
         } catch (err) {
-          console.error(err);
-          setDetailError('상세 정보를 불러오지 못했습니다.');
+          console.error('상세조회 오류:', err);
+          setDetailError('상세 정보를 불러오는 중 오류가 발생했습니다.');
         } finally {
           setIsDetailLoading(false);
         }
@@ -204,7 +215,7 @@
         setDetails(null);
       };
 
-      // 상세 값 병합용 헬퍼 함수 (API 두 곳과 목록 데이터 중 존재하는 값을 찾아 표기)
+      // 4. 모달 데이터 출력 헬퍼 함수
       const getDetailVal = (key) => {
         if (!details) return '-';
         if (modalType === 'device') {
@@ -251,6 +262,7 @@
 
           {!isLoading && hasSearched && !error && (
             <div>
+              {/* 목록 1: 시판 허가 기기 */}
               <div className="section-title">
                 <span>🟢 1. 시판 허가된 기기 목록</span>
                 <span className="result-count">총 {deviceResults.length}건</span>
@@ -282,6 +294,7 @@
                 <div className="no-data">시판 허가된 기기 검색 결과가 없습니다.</div>
               )}
 
+              {/* 목록 2: 임상시험 승인 내역 */}
               <div className="section-title">
                 <span>🟠 2. 임상시험 진행/승인 현황</span>
                 <span className="result-count">총 {trialResults.length}건</span>
@@ -315,6 +328,7 @@
             </div>
           )}
 
+          {/* 모달 팝업 영역 */}
           {selectedItem && (
             <div className="modal-overlay" onClick={closeModal}>
               <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -331,7 +345,7 @@
                 {isDetailLoading && <p className="loading">식약처 상세 데이터베이스 연동 중입니다...</p>}
                 {detailError && <p className="error">{detailError}</p>}
                 
-                {/* 시판 허가 기기 상세 모달 (API 3 + API 4 상세 통합) */}
+                {/* 팝업 1: 시판 허가 기기 상세 */}
                 {!isDetailLoading && details && modalType === 'device' && (
                   <table className="detail-table">
                     <tbody>
@@ -356,7 +370,7 @@
                   </table>
                 )}
 
-                {/* 임상시험 상세 모달 */}
+                {/* 팝업 2: 임상시험 상세 */}
                 {!isDetailLoading && details && modalType === 'trial' && (
                   <table className="detail-table">
                     <tbody>
