@@ -16,13 +16,18 @@
     .header-area { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2c3e50; padding-bottom: 15px; margin-bottom: 25px; }
     .header-area h1 { margin: 0; color: #2c3e50; font-size: 24px; font-weight: 800; }
     
-    /* 통합 검색창 스타일 */
-    .search-panel { background: #ecf0f1; border-radius: 8px; padding: 20px; margin-bottom: 30px; display: flex; gap: 10px; align-items: center; }
-    .search-panel select { padding: 12px; border: 1px solid #bdc3c7; border-radius: 4px; font-size: 15px; background: white; font-weight: bold; color: #2c3e50; }
-    .search-panel input { flex: 1; padding: 12px; border: 1px solid #bdc3c7; border-radius: 4px; font-size: 15px; }
-    .search-panel button { padding: 12px 30px; background-color: #2980b9; color: white; border: none; border-radius: 4px; font-size: 15px; font-weight: bold; cursor: pointer; transition: background-color 0.2s; }
-    .search-panel button:hover { background-color: #1c5980; }
-    .search-panel button:disabled { background-color: #95a5a6; cursor: not-allowed; }
+    /* 💡 새롭게 바뀐 다중 입력 검색창 스타일 */
+    .search-panel { background: #ecf0f1; border-radius: 8px; padding: 25px; margin-bottom: 30px; }
+    .search-panel h3 { margin-top: 0; margin-bottom: 15px; font-size: 16px; color: #34495e; }
+    .search-grid { display: flex; gap: 15px; align-items: flex-end; }
+    .input-group { flex: 1; display: flex; flex-direction: column; }
+    .input-group label { font-size: 14px; font-weight: bold; margin-bottom: 8px; color: #2c3e50; }
+    .input-group input { padding: 12px; border: 1px solid #bdc3c7; border-radius: 4px; font-size: 15px; transition: border-color 0.2s; }
+    .input-group input:focus { outline: none; border-color: #3498db; box-shadow: 0 0 5px rgba(52, 152, 219, 0.3); }
+    
+    .search-grid button { padding: 0 30px; height: 45px; background-color: #2980b9; color: white; border: none; border-radius: 4px; font-size: 15px; font-weight: bold; cursor: pointer; white-space: nowrap; transition: background-color 0.2s; }
+    .search-grid button:hover { background-color: #1c5980; }
+    .search-grid button:disabled { background-color: #95a5a6; cursor: not-allowed; }
 
     /* 결과 섹션 분리 스타일 */
     .section-title { font-size: 18px; color: #2980b9; border-bottom: 2px solid #3498db; padding-bottom: 8px; margin-top: 30px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: flex-end; }
@@ -61,8 +66,9 @@
     const { useState } = React;
 
     function App() {
-      const [searchType, setSearchType] = useState('PRDT_NM'); 
-      const [keyword, setKeyword] = useState('');
+      // 💡 드롭다운 대신 입력 필드 상태를 각각 분리했습니다.
+      const [prdtNm, setPrdtNm] = useState(''); // 제품명
+      const [bsshNm, setBsshNm] = useState(''); // 업체명
       
       const [deviceResults, setDeviceResults] = useState([]);
       const [trialResults, setTrialResults] = useState([]);
@@ -80,7 +86,11 @@
 
       const handleSearch = async (e) => {
         e.preventDefault();
-        if (!keyword.trim()) return alert('검색어를 입력해주세요.');
+        
+        // 💡 두 칸 중 하나도 입력하지 않았을 때만 경고 알림창 띄우기
+        if (!prdtNm.trim() && !bsshNm.trim()) {
+          return alert('제품명이나 업체명 중 최소 하나를 입력해주세요.');
+        }
 
         setIsLoading(true);
         setError(null);
@@ -89,13 +99,18 @@
         setHasSearched(true);
 
         try {
-          const deviceParam = searchType === 'BSSH_NM' ? `BSSH_NM=${encodeURIComponent(keyword)}` : `PRDT_NM=${encodeURIComponent(keyword)}`;
-          const deviceTargetUrl = `https://apis.data.go.kr/1471000/MdlpPrdlstPrmisnInfoService05/getMdlpPrdlstPrmisnList04?serviceKey=${API_KEY}&pageNo=1&numOfRows=30&type=json&${deviceParam}`;
+          // 💡 입력된 값만 골라서 URL 쿼리에 추가 (조합 검색 및 단일 검색 가능)
+          let deviceQuery = `serviceKey=${API_KEY}&pageNo=1&numOfRows=30&type=json`;
+          if (prdtNm.trim()) deviceQuery += `&PRDT_NM=${encodeURIComponent(prdtNm.trim())}`;
+          if (bsshNm.trim()) deviceQuery += `&BSSH_NM=${encodeURIComponent(bsshNm.trim())}`;
+
+          let trialQuery = `serviceKey=${API_KEY}&pageNo=1&numOfRows=30&type=json`;
+          if (prdtNm.trim()) trialQuery += `&PRDT_NM=${encodeURIComponent(prdtNm.trim())}`;
+          if (bsshNm.trim()) trialQuery += `&MNFT_IPRT_BSSH_NM=${encodeURIComponent(bsshNm.trim())}`; // 임상시험 API는 파라미터 이름이 다름
+
+          const deviceTargetUrl = `https://apis.data.go.kr/1471000/MdlpPrdlstPrmisnInfoService05/getMdlpPrdlstPrmisnList04?${deviceQuery}`;
+          const trialTargetUrl = `https://apis.data.go.kr/1471000/MdeqClncTestPlanAprvAplyListService/getMdeqClncTestPlanAprvAplyListInq?${trialQuery}`;
           
-          const trialParam = searchType === 'BSSH_NM' ? `MNFT_IPRT_BSSH_NM=${encodeURIComponent(keyword)}` : `PRDT_NM=${encodeURIComponent(keyword)}`;
-          const trialTargetUrl = `https://apis.data.go.kr/1471000/MdeqClncTestPlanAprvAplyListService/getMdeqClncTestPlanAprvAplyListInq?serviceKey=${API_KEY}&pageNo=1&numOfRows=30&type=json&${trialParam}`;
-          
-          // 더 안정적인 corsproxy.io 로 프록시 교체
           const deviceUrl = `https://corsproxy.io/?${encodeURIComponent(deviceTargetUrl)}`;
           const trialUrl = `https://corsproxy.io/?${encodeURIComponent(trialTargetUrl)}`;
 
@@ -172,20 +187,32 @@
             <h1>⚕️ MFDS 통합 의료기기 Database</h1>
           </div>
           
+          {/* 💡 새로운 통합 검색창 레이아웃 */}
           <form className="search-panel" onSubmit={handleSearch}>
-            <select value={searchType} onChange={(e) => setSearchType(e.target.value)}>
-              <option value="PRDT_NM">제품명(모델명)으로 검색</option>
-              <option value="BSSH_NM">업체명으로 검색</option>
-            </select>
-            <input 
-              type="text" 
-              value={keyword} 
-              onChange={(e) => setKeyword(e.target.value)} 
-              placeholder="검색어를 입력하세요 (예: 와이브레인, 주사기 등)" 
-            />
-            <button type="submit" disabled={isLoading}>
-              {isLoading ? '통합 검색 중...' : '통합 검색'}
-            </button>
+            <h3>🔍 조건 검색 (둘 중 하나만 입력하거나 일부 단어만 입력해도 검색됩니다)</h3>
+            <div className="search-grid">
+              <div className="input-group">
+                <label>제품명 (또는 모델명)</label>
+                <input 
+                  type="text" 
+                  value={prdtNm} 
+                  onChange={(e) => setPrdtNm(e.target.value)} 
+                  placeholder="예: 주사기 (일부 단어 허용)" 
+                />
+              </div>
+              <div className="input-group">
+                <label>업체명 (제조/수입업체)</label>
+                <input 
+                  type="text" 
+                  value={bsshNm} 
+                  onChange={(e) => setBsshNm(e.target.value)} 
+                  placeholder="예: 와이브레인 (일부 단어 허용)" 
+                />
+              </div>
+              <button type="submit" disabled={isLoading}>
+                {isLoading ? '검색 중...' : '통합 검색'}
+              </button>
+            </div>
           </form>
 
           {error && <p className="error">{error}</p>}
@@ -221,7 +248,7 @@
                   </tbody>
                 </table>
               ) : (
-                <div className="no-data">시판 허가된 기기 내역이 없습니다.</div>
+                <div className="no-data">시판 허가된 기기 검색 결과가 없습니다.</div>
               )}
 
               <div className="section-title">
@@ -252,7 +279,7 @@
                   </tbody>
                 </table>
               ) : (
-                <div className="no-data">관련된 임상시험 내역이 없습니다.</div>
+                <div className="no-data">관련된 임상시험 검색 결과가 없습니다.</div>
               )}
             </div>
           )}
